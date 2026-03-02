@@ -11,7 +11,7 @@ interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: bo
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number }
 
 const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Inter", lifelineDash: "long", theme: "light" };
-const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 50 };
+const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PAL = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#84cc16","#0891b2"];
@@ -83,16 +83,17 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const BR = 6, HS = l.spacing, LP = l.margin ?? 50, MG = l.stepHeight;
     const AH = 8, SW = 50, SH = 36, FS = l.textSize;
     const diagramTitle = d.title ?? DEFAULT_DIAGRAM_TITLE;
-    const TITLE_H = 38;
-    const TP = l.margin;
+    const TOP_PAD = l.margin;
     const BOT_PAD = l.margin;
+    const TITLE_H = 38;
+    const TP = 50;
     const cx = (i: number) => LP + BW / 2 + i * HS;
     const idx = new Map(ps.map((p, i) => [p.id, i]));
     const W = 2 * LP + (N - 1) * HS + BW;
     const VP = 44;
-    const H = TITLE_H + TP + BH + VP + ms.length * MG + VP + BH + BOT_PAD;
-    const lt = TITLE_H + TP + BH, lb = H - BOT_PAD - BH;
-    const msgY = (s: number) => TITLE_H + TP + BH + VP + (s - 1) * MG;
+    const H = TOP_PAD + TITLE_H + TP + BH + VP + ms.length * MG + VP + BH + BOT_PAD;
+    const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - BH;
+    const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * MG;
     const f = `'${o.font}', sans-serif`;
     const ld = LIFELINE_DASH[o.lifelineDash] ?? LIFELINE_DASH.long;
     const lifelineSW = ld.sw ?? 1.5;
@@ -102,13 +103,13 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const DASHED_STYLE = ` stroke-dasharray="0 7" stroke-linecap="round" stroke-width="2.5"`;
     const parts: string[] = [];
     parts.push(`<rect width="${W}" height="${H}" fill="${th.bg}"/>`);
-    parts.push(`<text x="${W / 2}" y="${TITLE_H / 2 + 6}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="15" font-weight="700" fill="${th.titleFill}">${esc(diagramTitle)}</text>`);
+    parts.push(`<text x="${W / 2}" y="${TOP_PAD + TITLE_H / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="15" font-weight="700" fill="${th.titleFill}">${esc(diagramTitle)}</text>`);
     ps.forEach((p, i) => {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
     });
     ps.forEach((p, i) => {
-        const x = cx(i) - BW / 2, y = TITLE_H + TP;
+        const x = cx(i) - BW / 2, y = TOP_PAD + TITLE_H + TP;
         parts.push(`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="${BR}" fill="${p.color}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
         parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
     });
@@ -301,7 +302,7 @@ function SettingsContent({
                     <SliderRow label="Width" value={layout.boxWidth} min={80} max={180} fontSize={fs(12)} onChange={v => updL({ boxWidth: v })} />
                     <SliderRow label="Gap" value={layout.spacing} min={120} max={350} fontSize={fs(12)} onChange={v => updL({ spacing: v })} />
                     <SliderRow label="Font" value={layout.textSize} min={10} max={20} unit="px" fontSize={fs(12)} onChange={v => updL({ textSize: v })} />
-                    <SliderRow label="Margin" value={layout.margin} min={35} max={120} fontSize={fs(12)} onChange={v => updL({ margin: v })} />
+                    <SliderRow label="Margin" value={layout.margin} min={120} max={200} fontSize={fs(12)} onChange={v => updL({ margin: v })} />
                 </div>
             </div>
 
