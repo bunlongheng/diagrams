@@ -7,14 +7,42 @@ interface Participant { id: string; label: string; color: string }
 type Arrow = "solid" | "dashed";
 interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; displayStep?: number }
 interface Diagram { participants: Participant[]; messages: SeqMsg[]; title?: string }
-interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string }
+interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; showIcons: boolean; icons: Record<string,string>; showBigNumbers: boolean }
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number }
 
-const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Inter", lifelineDash: "long", theme: "light" };
+const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Inter", lifelineDash: "long", theme: "light", showIcons: false, icons: {}, showBigNumbers: false };
 const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PAL = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#84cc16","#0891b2"];
+
+// ── Icon auto-detection ───────────────────────────────────────────────────────
+function guessIcon(s: string): string {
+    const l = s.toLowerCase();
+    if (/user|client|person|human|customer|visitor|me/.test(l))           return "👤";
+    if (/agent|agt|bot|ai|robot|llm|gpt|claude|assistant/.test(l))        return "🤖";
+    if (/api|server|backend|svc|service|micro|http/.test(l))              return "🖥️";
+    if (/db|database|sql|postgres|mysql|mongo|dynamo|data/.test(l))       return "🗄️";
+    if (/cache|redis|memcache/.test(l))                                    return "⚡";
+    if (/mcp|plugin|webhook|hook|connector/.test(l))                       return "🔌";
+    if (/git|github|gitlab|repo|version|commit/.test(l))                   return "🌿";
+    if (/web|browser|frontend|ui|react|next|html/.test(l))                 return "🌐";
+    if (/mem|memory|context|claude\.md|knowledge/.test(l))                 return "🧠";
+    if (/sh|shell|bash|terminal|cmd|cli|exec/.test(l))                     return "⚙️";
+    if (/file|fs|storage|disk|s3|blob|drive/.test(l))                      return "📂";
+    if (/cloud|aws|azure|gcp|infra|deploy/.test(l))                        return "☁️";
+    if (/queue|msg|kafka|rabbit|sqs|pubsub|bus/.test(l))                   return "📨";
+    if (/auth|security|oauth|jwt|sso|iam|key|secret/.test(l))              return "🔐";
+    if (/search|elastic|algolia|query/.test(l))                             return "🔍";
+    if (/log|monitor|metric|grafana|datadog|obs/.test(l))                  return "📊";
+    if (/email|mail|smtp|send/.test(l))                                     return "📧";
+    if (/pay|stripe|billing|invoice|wallet/.test(l))                        return "💳";
+    if (/mobile|app|ios|android|phone/.test(l))                             return "📱";
+    if (/ci|cd|pipeline|build|vercel|netlify|action/.test(l))               return "🚀";
+    if (/test|spec|qa|lint|check/.test(l))                                  return "🧪";
+    if (/notification|alert|notify|push/.test(l))                           return "🔔";
+    return "📦";
+}
 
 // ── Parser ────────────────────────────────────────────────────────────────────
 const DEFAULT_DIAGRAM_TITLE = "Sequence Diagram";
@@ -79,14 +107,16 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     if (!ps.length) return "";
     const N = ps.length;
     const BW = l.boxWidth;
-    const BH = Math.max(28, Math.round(BW * 0.31));
+    const ICON_EXTRA = o.showIcons ? 22 : 0;
+    const BH = Math.max(28, Math.round(BW * 0.31)) + ICON_EXTRA;
     const BR = 6, HS = l.spacing, LP = l.margin ?? 50, MG = l.stepHeight;
     const AH = 8, SW = 50, SH = 36, FS = l.textSize;
     const diagramTitle = d.title ?? DEFAULT_DIAGRAM_TITLE;
     const TOP_PAD = l.margin;
     const BOT_PAD = l.margin;
     const TITLE_H = 50;
-    const TP = 50;
+    const BIG_NUM_H = o.showBigNumbers ? 100 : 0;
+    const TP = 50 + BIG_NUM_H;
     const cx = (i: number) => LP + BW / 2 + i * HS;
     const idx = new Map(ps.map((p, i) => [p.id, i]));
     const W = 2 * LP + (N - 1) * HS + BW;
@@ -108,11 +138,21 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
     });
-    ps.forEach((p, i) => {
-        const x = cx(i) - BW / 2, y = TOP_PAD + TITLE_H + TP;
+    const renderBox = (p: Participant, i: number, y: number) => {
+        const x = cx(i) - BW / 2;
         parts.push(`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="${BR}" fill="${p.color}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
-        parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
-    });
+        if (o.showIcons) {
+            const icon = o.icons[p.id] ?? guessIcon(p.label);
+            parts.push(`<text x="${cx(i)}" y="${y + 20}" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="15">${icon}</text>`);
+            parts.push(`<text x="${cx(i)}" y="${y + BH - 10}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
+        } else {
+            parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
+        }
+        if (o.showBigNumbers) {
+            parts.push(`<text x="${cx(i)}" y="${TOP_PAD + TITLE_H + TP - 14}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="80" font-weight="900" fill="${p.color}" opacity="0.9">${i + 1}</text>`);
+        }
+    };
+    ps.forEach((p, i) => renderBox(p, i, TOP_PAD + TITLE_H + TP));
     ms.forEach(msg => {
         const fi = idx.get(msg.from) ?? 0, ti = idx.get(msg.to) ?? 0;
         const y = msgY(msg.step);
@@ -157,17 +197,13 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             }
         }
         if (o.coloredNumbers) {
-            parts.push(`<circle cx="${fx}" cy="${y}" r="10" fill="${fp.color}"/>`);
-            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${pillTextFill}">${msg.displayStep ?? msg.step}</text>`);
+            parts.push(`<circle cx="${fx}" cy="${y}" r="10" fill="transparent" stroke="${fp.color}" stroke-width="2"/>`);
+            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="#000000">${msg.displayStep ?? msg.step}</text>`);
         } else {
             parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="13" font-weight="700" fill="${th.plainTextFill}">${msg.displayStep ?? msg.step}</text>`);
         }
     });
-    ps.forEach((p, i) => {
-        const x = cx(i) - BW / 2, y = H - BOT_PAD - BH;
-        parts.push(`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="${BR}" fill="${p.color}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
-        parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
-    });
+    ps.forEach((p, i) => renderBox(p, i, H - BOT_PAD - BH));
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
 }
 
@@ -236,10 +272,10 @@ function IconBtn({ active, onClick, children }: { active: boolean; onClick: () =
 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
-    opts, layout, copied, mobile = false,
+    opts, layout, copied, mobile = false, participants = [],
     upd, updL, exportPng, exportCode, exportJson, copyCode,
 }: {
-    opts: Opts; layout: Layout; copied: boolean; mobile?: boolean;
+    opts: Opts; layout: Layout; copied: boolean; mobile?: boolean; participants?: Participant[];
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void; copyCode: () => void;
@@ -272,7 +308,7 @@ function SettingsContent({
             <div>
                 <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Style</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 14 : 11 }}>
-                    {([ ["coloredLines","Lines"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"] ] as const).map(([k, label]) => (
+                    {([ ["coloredLines","Lines"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"], ["showIcons","Icons"], ["showBigNumbers","Big Numbers"] ] as const).map(([k, label]) => (
                         <div key={k} className="flex items-center justify-between cursor-pointer select-none"
                             onClick={() => upd({ [k]: !opts[k] } as Partial<Opts>)}>
                             <span style={{ fontSize: fs(13), color: "#bbb", fontWeight: 400 }}>{label}</span>
@@ -292,6 +328,45 @@ function SettingsContent({
                     ))}
                 </div>
             </div>
+
+            {/* Icons editor — only when showIcons is on */}
+            {opts.showIcons && participants.length > 0 && (
+                <>
+                    <div style={{ height: 1, background: "#222" }} />
+                    <div>
+                        <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Icons</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {participants.map(p => {
+                                const current = opts.icons[p.id] ?? guessIcon(p.label);
+                                return (
+                                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <input
+                                            type="text"
+                                            value={current}
+                                            onChange={e => {
+                                                const chars = [...e.target.value];
+                                                const emoji = chars[chars.length - 1] ?? "📦";
+                                                upd({ icons: { ...opts.icons, [p.id]: emoji } });
+                                            }}
+                                            style={{
+                                                width: 44, height: 40, flexShrink: 0,
+                                                background: "#2a2a2c", border: "1px solid #444",
+                                                borderRadius: 10, color: "white",
+                                                fontSize: 20, textAlign: "center",
+                                                outline: "none", cursor: "text",
+                                            }}
+                                        />
+                                        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                                            <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
+                                            <span style={{ fontSize: fs(12), color: "#bbb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </>
+            )}
 
             <div style={{ height: 1, background: "#222" }} />
 
@@ -799,7 +874,7 @@ export default function SequenceTool() {
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 16px" }}>
-                            <SettingsContent opts={opts} layout={layout} copied={copied}
+                            <SettingsContent opts={opts} layout={layout} copied={copied} participants={diagram.participants}
                                 upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} />
                         </div>
                     </div>
@@ -886,7 +961,7 @@ export default function SequenceTool() {
                         </div>
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
-                            <SettingsContent opts={opts} layout={layout} copied={copied} mobile={true}
+                            <SettingsContent opts={opts} layout={layout} copied={copied} mobile={true} participants={diagram.participants}
                                 upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} />
                         </div>
                     </div>
