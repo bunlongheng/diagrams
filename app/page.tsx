@@ -206,14 +206,14 @@ const DEFAULT_CODE = `sequenceDiagram
     CC-->>User: Done — 3 files changed`;
 
 // ── Slider row ────────────────────────────────────────────────────────────────
-function SliderRow({ label, value, min, max, unit = "", onChange }: {
-    label: string; value: number; min: number; max: number; unit?: string; onChange: (v: number) => void;
+function SliderRow({ label, value, min, max, unit = "", fontSize = 12, onChange }: {
+    label: string; value: number; min: number; max: number; unit?: string; fontSize?: number; onChange: (v: number) => void;
 }) {
     return (
         <div>
             <div className="flex justify-between mb-1">
-                <span style={{ fontSize: 12, color: "#ffffff", fontWeight: 400 }}>{label}</span>
-                <span style={{ fontSize: 12, color: "#636366", fontWeight: 400 }}>{value}{unit}</span>
+                <span style={{ fontSize, color: "#ffffff", fontWeight: 400 }}>{label}</span>
+                <span style={{ fontSize, color: "#636366", fontWeight: 400 }}>{value}{unit}</span>
             </div>
             <input type="range" min={min} max={max} value={value}
                 onChange={e => onChange(parseInt(e.target.value))}
@@ -227,7 +227,7 @@ function IconBtn({ active, onClick, children }: { active: boolean; onClick: () =
     return (
         <button
             onClick={onClick}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:brightness-125"
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125"
             style={{ background: active ? "#0a84ff" : "#2a2a2c", color: "white" }}
         >{children}</button>
     );
@@ -235,25 +235,26 @@ function IconBtn({ active, onClick, children }: { active: boolean; onClick: () =
 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
-    opts, layout, copied,
+    opts, layout, copied, mobile = false,
     upd, updL, exportPng, exportCode, exportJson, copyCode,
 }: {
-    opts: Opts; layout: Layout; copied: boolean;
+    opts: Opts; layout: Layout; copied: boolean; mobile?: boolean;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void; copyCode: () => void;
 }) {
+    const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
             {/* Theme */}
             <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Theme</div>
+                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Theme</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
                     {(["light","dark","monokai"] as const).map(t => (
                         <button key={t} onClick={() => upd({ theme: t })}
                             style={{
-                                padding: "8px 4px", borderRadius: 10, fontSize: 11, fontWeight: 700,
+                                padding: mobile ? "10px 4px" : "8px 4px", borderRadius: 10, fontSize: fs(11), fontWeight: 700,
                                 textTransform: "capitalize", letterSpacing: "0.02em",
                                 border: opts.theme === t ? "2px solid #0a84ff" : "2px solid transparent",
                                 background: t === "light" ? "#f1f5f9" : t === "dark" ? "#16161e" : "#272822",
@@ -268,12 +269,12 @@ function SettingsContent({
             <div style={{ height: 1, background: "#222" }} />
 
             <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Style</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Style</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 14 : 11 }}>
                     {([ ["coloredLines","Lines"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"] ] as const).map(([k, label]) => (
                         <div key={k} className="flex items-center justify-between cursor-pointer select-none"
                             onClick={() => upd({ [k]: !opts[k] } as Partial<Opts>)}>
-                            <span style={{ fontSize: 13, color: "#bbb", fontWeight: 400 }}>{label}</span>
+                            <span style={{ fontSize: fs(13), color: "#bbb", fontWeight: 400 }}>{label}</span>
                             <div style={{
                                 position: "relative", width: 42, height: 24, borderRadius: 12, flexShrink: 0,
                                 background: opts[k] ? "#34c759" : "#333",
@@ -294,39 +295,39 @@ function SettingsContent({
             <div style={{ height: 1, background: "#222" }} />
 
             <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Layout</div>
+                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Layout</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} onChange={v => updL({ stepHeight: v })} />
-                    <SliderRow label="Width" value={layout.boxWidth} min={80} max={180} onChange={v => updL({ boxWidth: v })} />
-                    <SliderRow label="Gap" value={layout.spacing} min={120} max={350} onChange={v => updL({ spacing: v })} />
-                    <SliderRow label="Font" value={layout.textSize} min={10} max={20} unit="px" onChange={v => updL({ textSize: v })} />
-                    <SliderRow label="Margin" value={layout.margin} min={35} max={120} onChange={v => updL({ margin: v })} />
+                    <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} onChange={v => updL({ stepHeight: v })} />
+                    <SliderRow label="Width" value={layout.boxWidth} min={80} max={180} fontSize={fs(12)} onChange={v => updL({ boxWidth: v })} />
+                    <SliderRow label="Gap" value={layout.spacing} min={120} max={350} fontSize={fs(12)} onChange={v => updL({ spacing: v })} />
+                    <SliderRow label="Font" value={layout.textSize} min={10} max={20} unit="px" fontSize={fs(12)} onChange={v => updL({ textSize: v })} />
+                    <SliderRow label="Margin" value={layout.margin} min={35} max={120} fontSize={fs(12)} onChange={v => updL({ margin: v })} />
                 </div>
             </div>
 
             <div style={{ height: 1, background: "#222" }} />
 
             <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 9 }}>Export</div>
+                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 9 }}>Export</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
                     <button onClick={exportPng}
-                        className="py-2.5 rounded-xl text-[12px] font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: "#f97316", color: "white", cursor: "pointer" }}>
+                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: "#f97316", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                         PNG
                     </button>
                     <button onClick={exportCode}
-                        className="py-2.5 rounded-xl text-[12px] font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: "#3b82f6", color: "white", cursor: "pointer" }}>
+                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: "#3b82f6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                         Code
                     </button>
                     <button onClick={exportJson}
-                        className="py-2.5 rounded-xl text-[12px] font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: "#22c55e", color: "white", cursor: "pointer" }}>
+                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: "#22c55e", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                         JSON
                     </button>
                     <button onClick={copyCode}
-                        className="py-2.5 rounded-xl text-[12px] font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: copied ? "#34c759" : "#8b5cf6", color: "white", cursor: "pointer" }}>
+                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: copied ? "#34c759" : "#8b5cf6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                         {copied ? "Copied" : "Copy"}
                     </button>
                 </div>
@@ -609,10 +610,10 @@ export default function SequenceTool() {
                 <div className="flex-1" />
                 <div className="flex gap-2">
                     <IconBtn active={showCode} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
-                        <Code2 size={18} strokeWidth={2} />
+                        <Code2 size={20} strokeWidth={2} />
                     </IconBtn>
                     <IconBtn active={showSettings} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
-                        <SlidersHorizontal size={18} strokeWidth={2} />
+                        <SlidersHorizontal size={20} strokeWidth={2} />
                     </IconBtn>
                 </div>
             </header>
@@ -838,7 +839,7 @@ export default function SequenceTool() {
                             background: "transparent",
                             color: "#8892a4",
                             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                            fontSize: "13px",
+                            fontSize: "16px",
                             lineHeight: 1.8,
                             border: "none",
                             padding: "16px",
@@ -884,7 +885,7 @@ export default function SequenceTool() {
                         </div>
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
-                            <SettingsContent opts={opts} layout={layout} copied={copied}
+                            <SettingsContent opts={opts} layout={layout} copied={copied} mobile={true}
                                 upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} />
                         </div>
                     </div>
