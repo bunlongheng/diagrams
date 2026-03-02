@@ -8,10 +8,10 @@ type Arrow = "solid" | "dashed";
 interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; displayStep?: number }
 interface Diagram { participants: Participant[]; messages: SeqMsg[]; title?: string }
 interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; showIcons: boolean; icons: Record<string,string>; showBigNumbers: boolean }
-interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number }
+interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
 const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Inter", lifelineDash: "long", theme: "light", showIcons: false, icons: {}, showBigNumbers: false };
-const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120 };
+const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120, vPad: 44 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PAL = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#84cc16","#0891b2"];
@@ -161,7 +161,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const cx = (i: number) => LP + BW / 2 + i * HS;
     const idx = new Map(ps.map((p, i) => [p.id, i]));
     const W = 2 * LP + (N - 1) * HS + BW;
-    const VP = 44;
+    const VP = l.vPad ?? 44;
     const H = TOP_PAD + TITLE_H + TP + BH + VP + ms.length * MG + VP + BH + BOT_PAD;
     const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - BH;
     const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * MG;
@@ -183,10 +183,13 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const x = cx(i) - BW / 2;
         parts.push(`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="${BR}" fill="${p.color}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
         if (o.showIcons) {
-            const IPAD = 8, ISIZE = Math.min(BH - 10, 18);
+            const IPAD = 10, GAP = 6, ISIZE = Math.min(BH - 10, 18);
             const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
-            parts.push(renderIcon(iconKey, x + IPAD + ISIZE / 2, y + BH / 2, ISIZE));
-            parts.push(`<text x="${x + IPAD + ISIZE + 5}" y="${y + BH / 2 + 1}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
+            const estLabelW = p.label.length * (FS * 0.6);
+            const contentW = ISIZE + GAP + estLabelW;
+            const contentX = Math.max(x + IPAD, cx(i) - contentW / 2);
+            parts.push(renderIcon(iconKey, contentX + ISIZE / 2, y + BH / 2, ISIZE));
+            parts.push(`<text x="${contentX + ISIZE + GAP}" y="${y + BH / 2 + 1}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         } else {
             parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         }
@@ -413,7 +416,8 @@ function SettingsContent({
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} onChange={v => updL({ stepHeight: v })} />
                     <SliderRow label="Width" value={layout.boxWidth} min={80} max={180} fontSize={fs(12)} onChange={v => updL({ boxWidth: v })} />
-                    <SliderRow label="Gap" value={layout.spacing} min={120} max={350} fontSize={fs(12)} onChange={v => updL({ spacing: v })} />
+                    <SliderRow label="Gap" value={layout.spacing} min={120} max={450} fontSize={fs(12)} onChange={v => updL({ spacing: v })} />
+                    <SliderRow label="V.Gap" value={layout.vPad ?? 44} min={20} max={120} fontSize={fs(12)} onChange={v => updL({ vPad: v })} />
                     <SliderRow label="Font" value={layout.textSize} min={10} max={20} unit="px" fontSize={fs(12)} onChange={v => updL({ textSize: v })} />
                     <SliderRow label="Margin" value={layout.margin} min={120} max={200} fontSize={fs(12)} onChange={v => updL({ margin: v })} />
                 </div>
@@ -708,7 +712,7 @@ export default function SequenceTool() {
     const updL = (p: Partial<Layout>) => setLayout(l => ({ ...l, ...p }));
 
     // ── Exports ───────────────────────────────────────────────────────────
-    const EXPORT_LAYOUT: Layout = { stepHeight: 58, boxWidth: 160, spacing: 210, textSize: 14, margin: 60 };
+    const EXPORT_LAYOUT: Layout = { stepHeight: 58, boxWidth: 160, spacing: 210, textSize: 14, margin: 60, vPad: 44 };
 
     const exportPng = useCallback(() => {
         const exportSvg = buildSvg(diagram, opts, EXPORT_LAYOUT);
