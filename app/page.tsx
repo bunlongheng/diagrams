@@ -327,7 +327,12 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const DASHED_STYLE = ` stroke-dasharray="12 5" stroke-width="1.5"`;
     const parts: string[] = [];
     parts.push(`<rect width="${W}" height="${H}" fill="${th.bg}"/>`);
-    parts.push(`<text x="${W / 2}" y="${TOP_PAD + TITLE_H / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="24" font-weight="800" fill="${th.titleFill}">${esc(diagramTitle)}</text>`);
+    const titleY = TOP_PAD + TITLE_H / 2 + 1;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    parts.push(`<text x="${LP}" y="${titleY - 7}" dominant-baseline="middle" font-family="${f}" font-size="18" font-weight="800" fill="${th.titleFill}"><tspan fill="#a0aec0" font-weight="700">BH</tspan><tspan fill="#cbd5e0" font-weight="300"> | </tspan>${esc(diagramTitle)}</text>`);
+    parts.push(`<text x="${LP}" y="${titleY + 14}" dominant-baseline="middle" font-family="${f}" font-size="10" font-weight="400" fill="#718096">${dateStr} · ${timeStr}</text>`);
     ps.forEach((p, i) => {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
