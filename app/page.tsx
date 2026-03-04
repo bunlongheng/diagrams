@@ -915,6 +915,14 @@ export default function SequenceTool() {
     const updL = (p: Partial<Layout>) => setLayout(l => ({ ...l, ...p }));
 
     // ── Exports ───────────────────────────────────────────────────────────
+    const exportFilename = (ext: string) => {
+        const title = (diagram.title ?? "diagram").replace(/[^a-z0-9]/gi, "-").toLowerCase();
+        const now = new Date();
+        const date = now.toISOString().slice(0, 10);
+        const time = now.toTimeString().slice(0, 5).replace(":", "-");
+        return `${title}-${date}-${time}.${ext}`;
+    };
+
     const exportPng = useCallback(() => {
         const exportSvg = isSequence ? buildSvg(diagram, opts, layout) : mermaidSvg;
         if (!exportSvg) return;
@@ -926,7 +934,7 @@ export default function SequenceTool() {
             const ctx = c.getContext("2d")!;
             ctx.scale(2, 2); ctx.fillStyle = THEMES[opts.theme]?.bg ?? "#ffffff"; ctx.fillRect(0, 0, img.width, img.height);
             ctx.drawImage(img, 0, 0);
-            c.toBlob(b => { if (!b) return; const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "diagram.png"; a.click(); });
+            c.toBlob(b => { if (!b) return; const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = exportFilename("png"); a.click(); });
             URL.revokeObjectURL(url);
         };
         img.src = url;
@@ -935,14 +943,14 @@ export default function SequenceTool() {
     const exportCode = useCallback(() => {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(new Blob([code], { type: "text/plain" }));
-        a.download = "diagram.txt"; a.click();
+        a.download = exportFilename("txt"); a.click();
     }, [code]);
 
     const exportJson = useCallback(() => {
         const data = isSequence ? diagram : { type: diagramType, code };
         const a = document.createElement("a");
         a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-        a.download = "diagram.json"; a.click();
+        a.download = exportFilename("json"); a.click();
     }, [diagram, isSequence, diagramType, code]);
 
     const copyCode = useCallback(() => {
