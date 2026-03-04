@@ -549,18 +549,11 @@ function SettingsContent({
                                             <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                                 <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
                                                 <span style={{ fontSize: fs(12), color: "#bbb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
-                                                <select
+                                                <IconPicker
                                                     value={currentKey}
-                                                    onChange={e => upd({ icons: { ...opts.icons, [p.id]: e.target.value } })}
-                                                    style={{
-                                                        background: "#2a2a2c", border: "1px solid #444",
-                                                        borderRadius: 8, color: "white",
-                                                        fontSize: fs(11), padding: "4px 6px",
-                                                        outline: "none", cursor: "pointer", flexShrink: 0,
-                                                    }}
-                                                >
-                                                    {ICON_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
-                                                </select>
+                                                    color={p.color}
+                                                    onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
+                                                />
                                             </div>
                                         );
                                     })}
@@ -614,6 +607,89 @@ function SettingsContent({
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ── IconSvg — renders an icon key as React SVG ────────────────────────────────
+function IconSvg({ iconKey, size = 16, color = "currentColor" }: { iconKey: string; size?: number; color?: string }) {
+    const nodes = ICON_NODES[iconKey] ?? ICON_NODES.package;
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>
+            {nodes.map(([tag, props], i) => {
+                const p = props as Record<string, string | number>;
+                if (tag === "path")     return <path key={i} {...p} />;
+                if (tag === "rect")     return <rect key={i} {...p} />;
+                if (tag === "circle")   return <circle key={i} {...p} />;
+                if (tag === "ellipse")  return <ellipse key={i} {...p} />;
+                if (tag === "polygon")  return <polygon key={i} {...p} />;
+                if (tag === "polyline") return <polyline key={i} {...p} />;
+                return null;
+            })}
+        </svg>
+    );
+}
+
+// ── IconPicker ─────────────────────────────────────────────────────────────────
+function IconPicker({ value, color, onChange }: { value: string; color: string; onChange: (k: string) => void }) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
+    const filtered = ICON_KEYS.filter(k => !search || k.includes(search.toLowerCase()));
+
+    return (
+        <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
+            <button
+                onClick={() => { setOpen(o => !o); setSearch(""); }}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "#2a2a2c", border: "1px solid #444", borderRadius: 8, color: "white", padding: "4px 8px", cursor: "pointer", fontSize: 11 }}
+            >
+                <div style={{ width: 22, height: 22, borderRadius: 5, background: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <IconSvg iconKey={value} size={13} color="white" />
+                </div>
+                <span style={{ maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+                <span style={{ color: "#666", fontSize: 9 }}>▾</span>
+            </button>
+            {open && (
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 999, background: "#1a1a1c", border: "1px solid #444", borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
+                    <input
+                        autoFocus
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search… (u = user, db, bot…)"
+                        style={{ width: "100%", background: "#2a2a2c", border: "1px solid #555", borderRadius: 6, color: "white", fontSize: 11, padding: "5px 8px", outline: "none", marginBottom: 8, boxSizing: "border-box" }}
+                    />
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, maxHeight: 210, overflowY: "auto" }}>
+                        {filtered.map(k => (
+                            <button
+                                key={k}
+                                onClick={() => { onChange(k); setOpen(false); }}
+                                title={k}
+                                style={{
+                                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                                    gap: 4, padding: "7px 4px", borderRadius: 7, cursor: "pointer",
+                                    background: k === value ? color + "33" : "transparent",
+                                    border: k === value ? `1px solid ${color}88` : "1px solid transparent",
+                                    color: "white",
+                                }}
+                            >
+                                <IconSvg iconKey={k} size={18} color={k === value ? color : "#ccc"} />
+                                <span style={{ fontSize: 8, color: "#777", textAlign: "center", lineHeight: 1.2, overflow: "hidden", width: "100%", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
+                            </button>
+                        ))}
+                        {filtered.length === 0 && <span style={{ gridColumn: "1/-1", color: "#555", fontSize: 11, textAlign: "center", padding: 12 }}>No icons found</span>}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -901,6 +977,7 @@ export default function SequenceTool() {
             if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); setZoom(z => parseFloat(Math.min(4, z + 0.15).toFixed(2))); setFitActive(false); }
             if (mod && e.key === "-") { e.preventDefault(); setZoom(z => parseFloat(Math.max(0.1, z - 0.15).toFixed(2))); setFitActive(false); }
             if (e.key === "f" || e.key === "F") fitZoom();
+            if (e.key === "Escape") { setShowCode(false); setShowSettings(false); }
             if (e.key === " " && !e.repeat) { e.preventDefault(); spaceHeld.current = true; }
         };
         const onKeyUp = (e: KeyboardEvent) => {
