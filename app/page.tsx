@@ -1176,17 +1176,20 @@ export default function SequenceTool() {
                         }}
                         onDoubleClick={e => {
                             if ((e.target as HTMLElement).closest("button")) return;
-                            const rect = canvasRef.current!.getBoundingClientRect();
-                            const dx = e.clientX - (rect.left + rect.width / 2);
-                            const dy = e.clientY - (rect.top + rect.height / 2);
-                            const oldZoom = zoomRef.current;
-                            const newZoom = parseFloat(Math.min(4, oldZoom * 1.5).toFixed(3));
-                            const ratio = newZoom / oldZoom;
-                            const newPanX = dx * (1 - ratio) + panRef.current.x * ratio;
-                            const newPanY = dy * (1 - ratio) + panRef.current.y * ratio;
-                            zoomRef.current = newZoom;
-                            panRef.current = { x: newPanX, y: newPanY };
-                            setZoom(newZoom); setPanX(newPanX); setPanY(newPanY); setFitActive(false);
+                            if (Math.abs(zoomRef.current - 1.0) > 0.05) {
+                                // zoom to 100% centered on cursor
+                                const rect = canvasRef.current!.getBoundingClientRect();
+                                const dx = e.clientX - (rect.left + rect.width / 2);
+                                const dy = e.clientY - (rect.top + rect.height / 2);
+                                const ratio = 1.0 / zoomRef.current;
+                                const newPanX = dx * (1 - ratio) + panRef.current.x * ratio;
+                                const newPanY = dy * (1 - ratio) + panRef.current.y * ratio;
+                                zoomRef.current = 1.0;
+                                panRef.current = { x: newPanX, y: newPanY };
+                                setZoom(1.0); setPanX(newPanX); setPanY(newPanY); setFitActive(false);
+                            } else {
+                                fitZoom();
+                            }
                         }}
                     >
                         {mounted && activeSvg ? (
