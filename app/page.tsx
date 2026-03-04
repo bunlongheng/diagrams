@@ -332,7 +332,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     parts.push(`<text x="${LP}" y="${titleY - 7}" dominant-baseline="middle" font-family="${f}" font-size="18" font-weight="800" fill="${th.titleFill}"><tspan fill="#a0aec0" font-weight="700">BH</tspan><tspan fill="#cbd5e0" font-weight="300"> | </tspan>${esc(diagramTitle)}</text>`);
-    parts.push(`<text x="${LP}" y="${titleY + 14}" dominant-baseline="middle" font-family="${f}" font-size="10" font-weight="400" fill="#718096">${dateStr} · ${timeStr}</text>`);
+    parts.push(`<text x="${LP}" y="${titleY + 14}" dominant-baseline="middle" font-family="${f}" font-size="10" fill="#718096"><tspan font-weight="800" fill="#a0aec0">BH</tspan><tspan font-weight="300" fill="#cbd5e0"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
     ps.forEach((p, i) => {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
