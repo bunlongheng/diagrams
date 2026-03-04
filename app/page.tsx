@@ -368,6 +368,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             if (o.coloredText) {
                 const pillH = FS + 8, pillW = Math.max(40, msg.text.length * (FS * 0.62) + 12);
                 const pillX = fx + SW + 5, pillY = y + SH / 2 - pillH / 2;
+                parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
                 parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.5"/>`);
                 parts.push(`<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(msg.text)}</text>`);
             } else {
@@ -390,6 +391,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             if (o.coloredText) {
                 const pillH = FS + 8, pillW = Math.max(40, msg.text.length * (FS * 0.62) + 12);
                 const pillY = y - pillH / 2;
+                parts.push(`<rect x="${mid - pillW / 2}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
                 parts.push(`<rect x="${mid - pillW / 2}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.5"/>`);
                 parts.push(`<text x="${mid}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(msg.text)}</text>`);
             } else {
@@ -399,8 +401,6 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         if (o.coloredNumbers) {
             parts.push(`<circle cx="${fx}" cy="${y}" r="10" fill="${fp.color}" fill-opacity="0.2" stroke="${fp.color}" stroke-width="2"/>`);
             parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="#000000">${msg.displayStep ?? msg.step}</text>`);
-        } else {
-            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="13" font-weight="700" fill="${th.plainTextFill}">${msg.displayStep ?? msg.step}</text>`);
         }
     });
     ps.forEach((p, i) => renderBox(p, i, H - BOT_PAD - BH));
