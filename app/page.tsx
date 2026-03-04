@@ -977,13 +977,13 @@ export default function SequenceTool() {
         if (!mounted) return;
         const onKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement).tagName;
+            if (e.key === "Escape") { setShowCode(false); setShowSettings(false); return; }
             if (tag === "TEXTAREA" || tag === "INPUT") return;
             const mod = e.metaKey || e.ctrlKey;
             if (mod && e.key === "0") { e.preventDefault(); fitZoom(); }
             if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); setZoom(z => parseFloat(Math.min(4, z + 0.15).toFixed(2))); setFitActive(false); }
             if (mod && e.key === "-") { e.preventDefault(); setZoom(z => parseFloat(Math.max(0.1, z - 0.15).toFixed(2))); setFitActive(false); }
             if (e.key === "f" || e.key === "F") fitZoom();
-            if (e.key === "Escape") { setShowCode(false); setShowSettings(false); }
             if (e.key === " " && !e.repeat) { e.preventDefault(); spaceHeld.current = true; }
         };
         const onKeyUp = (e: KeyboardEvent) => {
