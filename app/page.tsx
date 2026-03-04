@@ -651,13 +651,10 @@ function IconPicker({ value, color, onChange }: { value: string; color: string; 
         <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
             <button
                 onClick={() => { setOpen(o => !o); setSearch(""); }}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: "#2a2a2c", border: "1px solid #444", borderRadius: 8, color: "white", padding: "4px 8px", cursor: "pointer", fontSize: 11 }}
+                title={value}
+                style={{ width: 28, height: 28, borderRadius: 7, background: color, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
             >
-                <div style={{ width: 22, height: 22, borderRadius: 5, background: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <IconSvg iconKey={value} size={13} color="white" />
-                </div>
-                <span style={{ maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
-                <span style={{ color: "#666", fontSize: 9 }}>▾</span>
+                <IconSvg iconKey={value} size={15} color="white" />
             </button>
             {open && (
                 <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 999, background: "#1a1a1c", border: "1px solid #444", borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
