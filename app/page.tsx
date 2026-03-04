@@ -331,8 +331,13 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    parts.push(`<text x="${LP}" y="${titleY - 7}" dominant-baseline="middle" font-family="${f}" font-size="18" font-weight="800" fill="${th.titleFill}">${esc(diagramTitle)}</text>`);
-    parts.push(`<text x="${LP}" y="${titleY + 14}" dominant-baseline="middle" font-family="${f}" font-size="10" fill="#718096"><tspan font-weight="800" fill="#a0aec0">BH</tspan><tspan font-weight="300" fill="#cbd5e0"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
+    const isDark = o.theme !== "light";
+    const titleColor   = isDark ? "#ffffff"  : th.titleFill;
+    const subBH        = isDark ? "#e2e8f0"  : "#a0aec0";
+    const subPipe      = isDark ? "#94a3b8"  : "#cbd5e0";
+    const subDate      = isDark ? "#94a3b8"  : "#718096";
+    parts.push(`<text x="${LP}" y="${titleY - 7}" dominant-baseline="middle" font-family="${f}" font-size="20" font-weight="800" fill="${titleColor}">${esc(diagramTitle)}</text>`);
+    parts.push(`<text x="${LP}" y="${titleY + 15}" dominant-baseline="middle" font-family="${f}" font-size="11" fill="${subDate}"><tspan font-weight="800" fill="${subBH}">BH</tspan><tspan font-weight="300" fill="${subPipe}"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
     ps.forEach((p, i) => {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
