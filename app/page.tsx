@@ -301,16 +301,19 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const { participants: ps, messages: ms } = d;
     if (!ps.length) return "";
     const N = ps.length;
-    const BW = l.boxWidth;
-    const BH = Math.max(28, Math.round(BW * 0.31));
     const BR = 6, HS = l.spacing, LP = l.margin ?? 50, MG = l.stepHeight;
     const AH = 8, SW = 50, SH = 36, FS = l.textSize;
+    const BH = Math.max(36, Math.round(FS * 2.6));
     const diagramTitle = d.title ?? DEFAULT_DIAGRAM_TITLE;
     const TOP_PAD = l.margin;
     const BOT_PAD = l.margin;
     const TITLE_H = 50;
     const BIG_NUM_H = o.showBigNumbers ? 100 : 0;
     const TP = 50 + BIG_NUM_H;
+    // Auto-fit box width to label content; Width slider = minimum / extra padding
+    const HPAD = 24, ICON_W = o.showIcons ? 26 : 0;
+    const pBW = ps.map(p => Math.max(l.boxWidth, Math.ceil(p.label.length * (FS * 0.65) + ICON_W + HPAD)));
+    const BW = Math.max(...pBW);
     const cx = (i: number) => LP + BW / 2 + i * HS;
     const idx = new Map(ps.map((p, i) => [p.id, i]));
     const W = 2 * LP + (N - 1) * HS + BW;
@@ -343,8 +346,9 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
     });
     const renderBox = (p: Participant, i: number, y: number) => {
-        const x = cx(i) - BW / 2;
-        parts.push(`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="${BR}" fill="${p.color}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
+        const bw = pBW[i];
+        const x = cx(i) - bw / 2;
+        parts.push(`<rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}" fill="${p.color}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
         if (o.showIcons) {
             const IPAD = 10, GAP = 6, ISIZE = Math.min(BH - 10, 18);
             const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
