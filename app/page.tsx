@@ -562,14 +562,14 @@ const DEFAULT_CODE = `sequenceDiagram
     CC-->>User: Done — 3 files changed`;
 
 // ── Slider row ────────────────────────────────────────────────────────────────
-function SliderRow({ label, value, min, max, unit = "", fontSize = 12, onChange }: {
-    label: string; value: number; min: number; max: number; unit?: string; fontSize?: number; onChange: (v: number) => void;
+function SliderRow({ label, value, min, max, unit = "", fontSize = 12, ut, onChange }: {
+    label: string; value: number; min: number; max: number; unit?: string; fontSize?: number; ut: UiTheme; onChange: (v: number) => void;
 }) {
     return (
         <div>
             <div className="flex justify-between mb-1">
-                <span style={{ fontSize, color: "#ffffff", fontWeight: 400 }}>{label}</span>
-                <span style={{ fontSize, color: "#636366", fontWeight: 400 }}>{value}{unit}</span>
+                <span style={{ fontSize, color: ut.bodyText, fontWeight: 400 }}>{label}</span>
+                <span style={{ fontSize, color: ut.sectionLabel, fontWeight: 500 }}>{value}{unit}</span>
             </div>
             <input type="range" min={min} max={max} value={value}
                 onChange={e => onChange(parseInt(e.target.value))}
@@ -579,12 +579,12 @@ function SliderRow({ label, value, min, max, unit = "", fontSize = 12, onChange 
 }
 
 // ── Icon button ───────────────────────────────────────────────────────────────
-function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", children }: { active: boolean; onClick: () => void; accent?: string; inactiveBg?: string; children: React.ReactNode }) {
+function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", color = "white", children }: { active: boolean; onClick: () => void; accent?: string; inactiveBg?: string; color?: string; children: React.ReactNode }) {
     return (
         <button
             onClick={onClick}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125"
-            style={{ background: active ? accent : inactiveBg, color: "white" }}
+            style={{ background: active ? accent : inactiveBg, color: active ? "white" : color }}
         >{children}</button>
     );
 }
@@ -654,12 +654,12 @@ function SettingsContent({
                     <div>
                         <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Layout</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                            <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} onChange={v => updL({ stepHeight: v })} />
-                            <SliderRow label="Width" value={layout.boxWidth} min={80} max={400} fontSize={fs(12)} onChange={v => updL({ boxWidth: v })} />
-                            <SliderRow label="Gap" value={layout.spacing} min={120} max={450} fontSize={fs(12)} onChange={v => updL({ spacing: v })} />
-                            <SliderRow label="V.Gap" value={layout.vPad ?? 44} min={20} max={300} fontSize={fs(12)} onChange={v => updL({ vPad: v })} />
-                            <SliderRow label="Font" value={layout.textSize} min={8} max={20} unit="px" fontSize={fs(12)} onChange={v => updL({ textSize: v })} />
-                            <SliderRow label="Margin" value={layout.margin} min={120} max={200} fontSize={fs(12)} onChange={v => updL({ margin: v })} />
+                            <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} ut={ut} onChange={v => updL({ stepHeight: v })} />
+                            <SliderRow label="Width" value={layout.boxWidth} min={80} max={400} fontSize={fs(12)} ut={ut} onChange={v => updL({ boxWidth: v })} />
+                            <SliderRow label="Gap" value={layout.spacing} min={120} max={450} fontSize={fs(12)} ut={ut} onChange={v => updL({ spacing: v })} />
+                            <SliderRow label="V.Gap" value={layout.vPad ?? 44} min={20} max={300} fontSize={fs(12)} ut={ut} onChange={v => updL({ vPad: v })} />
+                            <SliderRow label="Font" value={layout.textSize} min={8} max={20} unit="px" fontSize={fs(12)} ut={ut} onChange={v => updL({ textSize: v })} />
+                            <SliderRow label="Margin" value={layout.margin} min={120} max={200} fontSize={fs(12)} ut={ut} onChange={v => updL({ margin: v })} />
                         </div>
                     </div>
                 </>}
@@ -1251,13 +1251,28 @@ export default function SequenceTool() {
     return (
         <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
             <style>{`
-                .token.comment  { color: #727072; font-style: italic; }
-                .token.keyword  { color: #FF6188; font-weight: 600; }
-                .token.arrow    { color: #78DCE8; }
-                .token.string   { color: #FFD866; }
-                .token.number   { color: #AB9DF2; }
-                .token.operator { color: #FC9867; }
+                ${opts.theme === "light" ? `
+                .token.comment     { color: #6e7781; font-style: italic; }
+                .token.keyword     { color: #cf222e; font-weight: 600; }
+                .token.arrow       { color: #0969da; }
+                .token.string      { color: #0a3069; }
+                .token.number      { color: #8250df; }
+                .token.operator    { color: #953800; }
+                .token.punctuation { color: #6e7781; }
+                ` : `
+                .token.comment     { color: #727072; font-style: italic; }
+                .token.keyword     { color: #FF6188; font-weight: 600; }
+                .token.arrow       { color: #78DCE8; }
+                .token.string      { color: #FFD866; }
+                .token.number      { color: #AB9DF2; }
+                .token.operator    { color: #FC9867; }
                 .token.punctuation { color: #727072; }
+                `}
+                input[type="range"] { background: ${ut.divider}; }
+                input[type="range"]::-webkit-slider-thumb { background: ${ut.accent}; }
+                input[type="range"]::-moz-range-thumb { background: ${ut.accent}; border: none; }
+                input[type="range"]::-moz-range-track { background: ${ut.divider}; }
+                input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.35); }
                 .npm__react-simple-code-editor__textarea { outline: none !important; }
             `}</style>
 
@@ -1287,10 +1302,10 @@ export default function SequenceTool() {
                             border: `2px solid ${ut.accent}`,
                         }}
                     >{opts.theme === "light" ? "LT" : opts.theme === "dark" ? "DK" : "MK"}</button>
-                    <IconBtn active={showCode} accent={ut.accent} inactiveBg={ut.activeTab} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
+                    <IconBtn active={showCode} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
                         <Code2 size={20} strokeWidth={2} />
                     </IconBtn>
-                    <IconBtn active={showSettings} accent={ut.accent} inactiveBg={ut.activeTab} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
+                    <IconBtn active={showSettings} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
                         <SlidersHorizontal size={20} strokeWidth={2} />
                     </IconBtn>
                 </div>
