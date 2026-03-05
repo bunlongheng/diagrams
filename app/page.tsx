@@ -318,7 +318,7 @@ const UI_THEMES: Record<string, UiTheme> = {
         sectionLabel: "#444",  bodyText:     "#bbb",      divider: "#222",
         toggleOn:  "#34c759",  accent:       "#0a84ff",
         overlayBtnBg: "#1e1e20", pullHandle: "#333",
-        codeBg:    "#0d1117",  codeHeaderBg: "#0a0f1e",  codeBorder: "#1e2334", codeText: "#8892a4",
+        codeBg:    "#ffffff",  codeHeaderBg: "#f8fafc",  codeBorder: "#e2e8f0", codeText: "#1e293b",
         zoomBg:    "white",    zoomBorder:   "#e2e8f0",  zoomText: "#1e293b",   zoomMuted: "#64748b", zoomDivider: "#e2e8f0",
         badgeBg:   "#0a84ff22", badgeText:   "#0a84ff",
     },
@@ -690,33 +690,6 @@ function SettingsContent({
             </>}
 
             {tab === "components" && isSequence && <>
-                {/* Style toggles */}
-                <div>
-                    <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Style</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 14 : 11 }}>
-                        {([ ["coloredLines","Lines"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"], ["showIcons","Icons"], ["showBigNumbers","Big Numbers"] ] as const).map(([k, label]) => (
-                            <div key={k} className="flex items-center justify-between cursor-pointer select-none"
-                                onClick={() => upd({ [k]: !opts[k] } as Partial<Opts>)}>
-                                <span style={{ fontSize: fs(13), color: ut.bodyText, fontWeight: 400 }}>{label}</span>
-                                <div style={{
-                                    position: "relative", width: 42, height: 24, borderRadius: 12, flexShrink: 0,
-                                    background: opts[k] ? ut.toggleOn : ut.tabBarBg,
-                                    transition: "background 0.2s", cursor: "pointer",
-                                }}>
-                                    <div style={{
-                                        position: "absolute", top: 2, width: 20, height: 20, borderRadius: 10,
-                                        background: "white", left: opts[k] ? 20 : 2,
-                                        transition: "left 0.2s ease",
-                                        boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-                                    }} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div style={{ height: 1, background: ut.divider }} />
-
                 {/* Box Overlay */}
                 <div>
                     <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Overlay</div>
@@ -1332,7 +1305,7 @@ export default function SequenceTool() {
                                     background: "transparent",
                                     color: ut.codeText,
                                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                                    fontSize: "12.5px",
+                                    fontSize: "9px",
                                     lineHeight: 1.75,
                                     border: "none",
                                 }}
@@ -1569,7 +1542,7 @@ export default function SequenceTool() {
                             background: "transparent",
                             color: ut.codeText,
                             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                            fontSize: "16px",
+                            fontSize: "11px",
                             lineHeight: 1.8,
                             border: "none",
                             padding: "16px",
