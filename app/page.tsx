@@ -572,15 +572,25 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
     );
 }
 
+// ── URL encode/decode helpers ──────────────────────────────────────────────────
+function encodeData(s: string): string {
+    try { return btoa(encodeURIComponent(s).replace(/%([0-9A-F]{2})/g, (_, p) => String.fromCharCode(parseInt(p, 16)))); } catch { return ""; }
+}
+function decodeData(s: string): string {
+    try { return decodeURIComponent(atob(s).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")); } catch { return ""; }
+}
+
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
-    opts, layout, copied, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportCode, exportJson, copyCode,
+    opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
+    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share,
 }: {
-    opts: Opts; layout: Layout; copied: boolean; mobile?: boolean; participants?: Participant[]; isSequence?: boolean;
+    opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
+    mobile?: boolean; participants?: Participant[]; isSequence?: boolean;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
-    exportPng: () => void; exportCode: () => void; exportJson: () => void; copyCode: () => void;
+    exportPng: () => void; exportCode: () => void; exportJson: () => void;
+    copyCode: () => void; copyLink: () => void; share: () => void;
 }) {
     const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
     const [tab, setTab] = useState<"general" | "components">("general");
@@ -642,6 +652,7 @@ function SettingsContent({
                 <div>
                     <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 9 }}>Download</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                        {/* Row 1 */}
                         <button onClick={exportPng}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "#FF6188", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
@@ -652,15 +663,27 @@ function SettingsContent({
                             style={{ background: "#FC9867", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                             Code
                         </button>
+                        {/* Row 2 */}
+                        <button onClick={copyLink}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: copiedLink ? "#A9DC76" : "#FFD866", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            {copiedLink ? "Copied!" : "Link"}
+                        </button>
                         <button onClick={exportJson}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "#A9DC76", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                             JSON
                         </button>
+                        {/* Row 3 */}
+                        <button onClick={share}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: copiedShare ? "#A9DC76" : "#78DCE8", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            {copiedShare ? "Shared!" : "Share"}
+                        </button>
                         <button onClick={copyCode}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: copied ? "#A9DC76" : "#AB9DF2", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
-                            {copied ? "Copied" : "Copy"}
+                            {copied ? "Copied!" : "Copy"}
                         </button>
                     </div>
                 </div>
@@ -842,6 +865,8 @@ export default function SequenceTool() {
     const [editorDark, setEditorDark] = useState(false);
     const [codeWidth, setCodeWidth] = useState(340);
     const [copied, setCopied] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [copiedShare, setCopiedShare] = useState(false);
     const [hasFit, setHasFit] = useState(false);
     const [fitActive, setFitActive] = useState(true);
     const [opts, setOpts] = useState<Opts>(DEFAULT_OPTS);
@@ -1013,10 +1038,16 @@ export default function SequenceTool() {
         return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
     }, []);
 
-    // ── Mount + localStorage ──────────────────────────────────────────────
+    // ── Mount + localStorage + URL param ─────────────────────────────────
     useEffect(() => {
         setMounted(true);
         setIsMobile(window.innerWidth < 768);
+        // URL ?data= takes priority over localStorage
+        const urlData = new URLSearchParams(window.location.search).get("data");
+        if (urlData) {
+            const decoded = decodeData(urlData);
+            if (decoded) { setCode(decoded); return; }
+        }
         const c = localStorage.getItem("nsd-code");
         if (c) setCode(c);
         try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
@@ -1174,6 +1205,30 @@ export default function SequenceTool() {
             setTimeout(() => setCopied(false), 1500);
         });
     }, [code]);
+
+    const buildShareUrl = useCallback(() => {
+        const encoded = encodeData(code);
+        return `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+    }, [code]);
+
+    const copyLink = useCallback(() => {
+        navigator.clipboard.writeText(buildShareUrl()).then(() => {
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 1500);
+        });
+    }, [buildShareUrl]);
+
+    const share = useCallback(() => {
+        const url = buildShareUrl();
+        if (navigator.share) {
+            navigator.share({ title: "Mermaid++ Diagram", url }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(url).then(() => {
+                setCopiedShare(true);
+                setTimeout(() => setCopiedShare(false), 1500);
+            });
+        }
+    }, [buildShareUrl]);
 
     const fireConfetti = useCallback(() => {
         import("canvas-confetti").then(({ default: confetti }) => {
@@ -1473,8 +1528,8 @@ export default function SequenceTool() {
                 {!isMobile && showSettings && (
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "20px 16px" }}>
-                            <SettingsContent opts={opts} layout={layout} copied={copied} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} />
+                            <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} />
                         </div>
                     </div>
                 )}
@@ -1549,8 +1604,8 @@ export default function SequenceTool() {
                         </div>
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
-                            <SettingsContent opts={opts} layout={layout} copied={copied} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} />
+                            <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} />
                         </div>
                     </div>
                 </div>
