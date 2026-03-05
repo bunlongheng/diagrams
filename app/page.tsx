@@ -328,7 +328,7 @@ type UiTheme = {
 };
 const UI_THEMES: Record<string, UiTheme> = {
     light: {
-        headerBg: "#111113",   headerBorder: "#27272a",   headerText: "#f4f4f5",
+        headerBg: "#374151",   headerBorder: "#4b5563",   headerText: "#f9fafb",
         canvasBg:  "#c8d0da",
         panelBg:   "#f1f5f9",  panelBorder:  "#e2e8f0",
         tabBarBg:  "#e2e8f0",  activeTab:    "#ffffff",   activeTabText: "#1e293b", inactiveTabText: "#94a3b8",
@@ -634,17 +634,25 @@ function SettingsContent({
                 <div>
                     <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Theme</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                        {(["light","dark","monokai"] as const).map(t => (
+                        {([
+                            ["light",   "#f1f5f9"],
+                            ["dark",    "#16161e"],
+                            ["monokai", "#272822"],
+                        ] as const).map(([t, dot]) => (
                             <button key={t} onClick={() => upd({ theme: t })}
                                 style={{
-                                    padding: mobile ? "10px 4px" : "8px 4px", borderRadius: 10, fontSize: fs(11), fontWeight: 700,
+                                    padding: mobile ? "10px 4px" : "8px 6px", borderRadius: 10, fontSize: fs(11), fontWeight: 700,
                                     textTransform: "capitalize", letterSpacing: "0.02em",
-                                    border: opts.theme === t ? `2px solid ${ut.accent}` : "2px solid transparent",
-                                    background: t === "light" ? "#f1f5f9" : t === "dark" ? "#16161e" : "#272822",
-                                    color: t === "light" ? "#1e293b" : t === "dark" ? "#c0caf5" : "#f8f8f2",
-                                    cursor: "pointer", transition: "border 0.15s",
+                                    border: opts.theme === t ? `2px solid ${ut.accent}` : `2px solid ${ut.panelBorder}`,
+                                    background: opts.theme === t ? `${ut.accent}14` : ut.overlayBtnBg,
+                                    color: opts.theme === t ? ut.accent : ut.bodyText,
+                                    cursor: "pointer", transition: "all 0.15s",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                                 }}
-                            >{t}</button>
+                            >
+                                <span style={{ width: 9, height: 9, borderRadius: "50%", background: dot, border: `1.5px solid ${ut.panelBorder}`, flexShrink: 0, display: "inline-block" }} />
+                                {t}
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -1274,13 +1282,23 @@ export default function SequenceTool() {
                 input[type="range"]::-moz-range-track { background: ${ut.divider}; }
                 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.35); }
                 .npm__react-simple-code-editor__textarea { outline: none !important; }
+                @keyframes rainbow-pp {
+                    0%   { color: #FF6188; }
+                    16%  { color: #FC9867; }
+                    33%  { color: #FFD866; }
+                    50%  { color: #A9DC76; }
+                    66%  { color: #78DCE8; }
+                    83%  { color: #AB9DF2; }
+                    100% { color: #FF6188; }
+                }
+                .rainbow-pp { animation: rainbow-pp 2.5s linear infinite; font-weight: 900; }
             `}</style>
 
             {/* ── HEADER ── */}
             <header className="flex items-center px-4 shrink-0"
                 style={{ height: 54, background: ut.headerBg, borderBottom: `1px solid ${ut.headerBorder}` }}>
                 <span className="font-bold text-[16px] tracking-tight" style={{ color: ut.headerText, letterSpacing: "-0.3px" }}>
-                    Mermaid++
+                    Mermaid<span className="rainbow-pp">++</span>
                 </span>
                 {diagramType !== "sequence" && (
                     <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, background: ut.badgeBg,
