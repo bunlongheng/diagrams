@@ -333,11 +333,11 @@ const UI_THEMES: Record<string, UiTheme> = {
         panelBg:   "#f1f5f9",  panelBorder:  "#e2e8f0",
         tabBarBg:  "#e2e8f0",  activeTab:    "#ffffff",   activeTabText: "#1e293b", inactiveTabText: "#94a3b8",
         sectionLabel: "#94a3b8", bodyText:   "#334155",   divider: "#e2e8f0",
-        toggleOn:  "#34c759",  accent:       "#0a84ff",
+        toggleOn:  "#4b5563",  accent:       "#4b5563",
         overlayBtnBg: "#e8eef5", pullHandle: "#cbd5e1",
         codeBg:    "#ffffff",  codeHeaderBg: "#f8fafc",  codeBorder: "#e2e8f0", codeText: "#1e293b",
         zoomBg:    "white",    zoomBorder:   "#e2e8f0",  zoomText: "#1e293b",   zoomMuted: "#64748b", zoomDivider: "#e2e8f0",
-        badgeBg:   "#0a84ff22", badgeText:   "#0a84ff",
+        badgeBg:   "#4b556322", badgeText:   "#4b5563",
     },
     dark: {
         headerBg: "#0d0e14",   headerBorder: "#1e2030",   headerText: "#c0caf5",
@@ -1302,18 +1302,7 @@ export default function SequenceTool() {
                 )}
                 <div className="flex-1" />
                 <div className="flex gap-2">
-                    {/* Theme cycle button */}
-                    <button
-                        onClick={() => upd({ theme: opts.theme === "light" ? "dark" : opts.theme === "dark" ? "monokai" : "light" })}
-                        title={`Theme: ${opts.theme}`}
-                        className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125 text-[10px] font-black tracking-tight select-none"
-                        style={{
-                            background: opts.theme === "light" ? "#f1f5f9" : opts.theme === "dark" ? "#16161e" : "#272822",
-                            color: opts.theme === "light" ? "#1e293b" : opts.theme === "dark" ? "#c0caf5" : "#f8f8f2",
-                            border: `2px solid ${ut.accent}`,
-                        }}
-                    >{opts.theme === "light" ? "LT" : opts.theme === "dark" ? "DK" : "MK"}</button>
-                    <IconBtn active={showCode} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
+<IconBtn active={showCode} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
                         <Code2 size={20} strokeWidth={2} />
                     </IconBtn>
                     <IconBtn active={showSettings} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
