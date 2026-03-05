@@ -562,12 +562,12 @@ function SliderRow({ label, value, min, max, unit = "", fontSize = 12, onChange 
 }
 
 // ── Icon button ───────────────────────────────────────────────────────────────
-function IconBtn({ active, onClick, accent = "#0a84ff", children }: { active: boolean; onClick: () => void; accent?: string; children: React.ReactNode }) {
+function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", children }: { active: boolean; onClick: () => void; accent?: string; inactiveBg?: string; children: React.ReactNode }) {
     return (
         <button
             onClick={onClick}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125"
-            style={{ background: active ? accent : "#2a2a2c", color: "white" }}
+            style={{ background: active ? accent : inactiveBg, color: "white" }}
         >{children}</button>
     );
 }
@@ -644,22 +644,22 @@ function SettingsContent({
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
                         <button onClick={exportPng}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: "#f97316", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            style={{ background: "#FF6188", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                             PNG
                         </button>
                         <button onClick={exportCode}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: "#3b82f6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            style={{ background: "#FC9867", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                             Code
                         </button>
                         <button onClick={exportJson}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: "#22c55e", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            style={{ background: "#A9DC76", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                             JSON
                         </button>
                         <button onClick={copyCode}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: copied ? "#34c759" : "#8b5cf6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            style={{ background: copied ? "#A9DC76" : "#AB9DF2", color: "#221F22", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
                             {copied ? "Copied" : "Copy"}
                         </button>
                     </div>
@@ -677,7 +677,7 @@ function SettingsContent({
                                 <span style={{ fontSize: fs(13), color: ut.bodyText, fontWeight: 400 }}>{label}</span>
                                 <div style={{
                                     position: "relative", width: 42, height: 24, borderRadius: 12, flexShrink: 0,
-                                    background: opts[k] ? ut.toggleOn : "#333",
+                                    background: opts[k] ? ut.toggleOn : ut.tabBarBg,
                                     transition: "background 0.2s", cursor: "pointer",
                                 }}>
                                     <div style={{
@@ -734,6 +734,7 @@ function SettingsContent({
                                         <IconPicker
                                             value={currentKey}
                                             color={p.color}
+                                            ut={ut}
                                             onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
                                         />
                                     </div>
@@ -771,7 +772,7 @@ function IconSvg({ iconKey, size = 16, color = "currentColor" }: { iconKey: stri
 }
 
 // ── IconPicker ─────────────────────────────────────────────────────────────────
-function IconPicker({ value, color, onChange }: { value: string; color: string; onChange: (k: string) => void }) {
+function IconPicker({ value, color, ut, onChange }: { value: string; color: string; ut: UiTheme; onChange: (k: string) => void }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const ref = useRef<HTMLDivElement>(null);
@@ -797,13 +798,13 @@ function IconPicker({ value, color, onChange }: { value: string; color: string; 
                 <IconSvg iconKey={value} size={15} color="white" />
             </button>
             {open && (
-                <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 999, background: "#1a1a1c", border: "1px solid #444", borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 999, background: ut.panelBg, border: `1px solid ${ut.panelBorder}`, borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
                     <input
                         autoFocus
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Search… (u = user, db, bot…)"
-                        style={{ width: "100%", background: "#2a2a2c", border: "1px solid #555", borderRadius: 6, color: "white", fontSize: 11, padding: "5px 8px", outline: "none", marginBottom: 8, boxSizing: "border-box" }}
+                        style={{ width: "100%", background: ut.activeTab, border: `1px solid ${ut.divider}`, borderRadius: 6, color: ut.bodyText, fontSize: 11, padding: "5px 8px", outline: "none", marginBottom: 8, boxSizing: "border-box" }}
                     />
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, maxHeight: 210, overflowY: "auto" }}>
                         {filtered.map(k => (
@@ -816,14 +817,14 @@ function IconPicker({ value, color, onChange }: { value: string; color: string; 
                                     gap: 4, padding: "7px 4px", borderRadius: 7, cursor: "pointer",
                                     background: k === value ? color + "33" : "transparent",
                                     border: k === value ? `1px solid ${color}88` : "1px solid transparent",
-                                    color: "white",
+                                    color: ut.bodyText,
                                 }}
                             >
-                                <IconSvg iconKey={k} size={18} color={k === value ? color : "#ccc"} />
-                                <span style={{ fontSize: 8, color: "#777", textAlign: "center", lineHeight: 1.2, overflow: "hidden", width: "100%", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
+                                <IconSvg iconKey={k} size={18} color={k === value ? color : ut.zoomMuted} />
+                                <span style={{ fontSize: 8, color: ut.sectionLabel, textAlign: "center", lineHeight: 1.2, overflow: "hidden", width: "100%", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
                             </button>
                         ))}
-                        {filtered.length === 0 && <span style={{ gridColumn: "1/-1", color: "#555", fontSize: 11, textAlign: "center", padding: 12 }}>No icons found</span>}
+                        {filtered.length === 0 && <span style={{ gridColumn: "1/-1", color: ut.inactiveTabText, fontSize: 11, textAlign: "center", padding: 12 }}>No icons found</span>}
                     </div>
                 </div>
             )}
@@ -1220,10 +1221,21 @@ export default function SequenceTool() {
                 )}
                 <div className="flex-1" />
                 <div className="flex gap-2">
-                    <IconBtn active={showCode} accent={ut.accent} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
+                    {/* Theme cycle button */}
+                    <button
+                        onClick={() => upd({ theme: opts.theme === "light" ? "dark" : opts.theme === "dark" ? "monokai" : "light" })}
+                        title={`Theme: ${opts.theme}`}
+                        className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125 text-[10px] font-black tracking-tight select-none"
+                        style={{
+                            background: opts.theme === "light" ? "#f1f5f9" : opts.theme === "dark" ? "#16161e" : "#272822",
+                            color: opts.theme === "light" ? "#1e293b" : opts.theme === "dark" ? "#c0caf5" : "#f8f8f2",
+                            border: `2px solid ${ut.accent}`,
+                        }}
+                    >{opts.theme === "light" ? "LT" : opts.theme === "dark" ? "DK" : "MK"}</button>
+                    <IconBtn active={showCode} accent={ut.accent} inactiveBg={ut.activeTab} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
                         <Code2 size={20} strokeWidth={2} />
                     </IconBtn>
-                    <IconBtn active={showSettings} accent={ut.accent} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
+                    <IconBtn active={showSettings} accent={ut.accent} inactiveBg={ut.activeTab} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
                         <SlidersHorizontal size={20} strokeWidth={2} />
                     </IconBtn>
                 </div>
@@ -1332,7 +1344,7 @@ export default function SequenceTool() {
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
                         ) : mounted && !activeSvg && !isSequence ? (
-                            <div style={{ color: "#888", position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}>
+                            <div style={{ color: ut.zoomMuted, position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}>
                                 Rendering…
                             </div>
                         ) : (
