@@ -26,3 +26,11 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# netlify
+.netlify/
+
+# build artifacts
+tsconfig.tsbuildinfo
+smoke-test.mjs
+package-lock.json
