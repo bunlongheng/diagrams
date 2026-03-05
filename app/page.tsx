@@ -634,11 +634,7 @@ function SettingsContent({
                 <div>
                     <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Theme</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                        {([
-                            ["light",   "#f1f5f9"],
-                            ["dark",    "#16161e"],
-                            ["monokai", "#272822"],
-                        ] as const).map(([t, dot]) => (
+                        {(["light", "dark", "monokai"] as const).map(t => (
                             <button key={t} onClick={() => upd({ theme: t })}
                                 style={{
                                     padding: mobile ? "10px 4px" : "8px 6px", borderRadius: 10, fontSize: fs(11), fontWeight: 700,
@@ -649,10 +645,7 @@ function SettingsContent({
                                     cursor: "pointer", transition: "all 0.15s",
                                     display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                                 }}
-                            >
-                                <span style={{ width: 9, height: 9, borderRadius: "50%", background: dot, border: `1.5px solid ${ut.panelBorder}`, flexShrink: 0, display: "inline-block" }} />
-                                {t}
-                            </button>
+                            >{t}</button>
                         ))}
                     </div>
                 </div>
