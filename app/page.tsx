@@ -297,6 +297,57 @@ const THEMES: Record<string, { bg: string; titleFill: string; boxStroke: string;
     monokai: { bg: "#272822", titleFill: "#f8f8f2",  boxStroke: "none",    boxStrokeW: "0",   labelFill: "#272822", plainTextFill: "#f8f8f2" },
 };
 
+type UiTheme = {
+    headerBg: string; headerBorder: string; headerText: string;
+    canvasBg: string;
+    panelBg: string; panelBorder: string;
+    tabBarBg: string; activeTab: string; activeTabText: string; inactiveTabText: string;
+    sectionLabel: string; bodyText: string; divider: string;
+    toggleOn: string; accent: string;
+    overlayBtnBg: string; pullHandle: string;
+    codeBg: string; codeHeaderBg: string; codeBorder: string; codeText: string;
+    zoomBg: string; zoomBorder: string; zoomText: string; zoomMuted: string; zoomDivider: string;
+    badgeBg: string; badgeText: string;
+};
+const UI_THEMES: Record<string, UiTheme> = {
+    light: {
+        headerBg: "#111113",   headerBorder: "#27272a",   headerText: "#f4f4f5",
+        canvasBg:  "#c8d0da",
+        panelBg:   "#161618",  panelBorder:  "#2a2a2a",
+        tabBarBg:  "#111",     activeTab:    "#2a2a2c",   activeTabText: "#fff", inactiveTabText: "#555",
+        sectionLabel: "#444",  bodyText:     "#bbb",      divider: "#222",
+        toggleOn:  "#34c759",  accent:       "#0a84ff",
+        overlayBtnBg: "#1e1e20", pullHandle: "#333",
+        codeBg:    "#0d1117",  codeHeaderBg: "#0a0f1e",  codeBorder: "#1e2334", codeText: "#8892a4",
+        zoomBg:    "white",    zoomBorder:   "#e2e8f0",  zoomText: "#1e293b",   zoomMuted: "#64748b", zoomDivider: "#e2e8f0",
+        badgeBg:   "#0a84ff22", badgeText:   "#0a84ff",
+    },
+    dark: {
+        headerBg: "#0d0e14",   headerBorder: "#1e2030",   headerText: "#c0caf5",
+        canvasBg:  "#13131a",
+        panelBg:   "#16161e",  panelBorder:  "#1e2030",
+        tabBarBg:  "#0d0e14",  activeTab:    "#1e2030",   activeTabText: "#c0caf5", inactiveTabText: "#565f89",
+        sectionLabel: "#565f89", bodyText:   "#a9b1d6",   divider: "#1e2030",
+        toggleOn:  "#7dcfff",  accent:       "#7aa2f7",
+        overlayBtnBg: "#1a1b26", pullHandle: "#1e2030",
+        codeBg:    "#0d0e14",  codeHeaderBg: "#0a0b10",  codeBorder: "#1e2030", codeText: "#a9b1d6",
+        zoomBg:    "#16161e",  zoomBorder:   "#1e2030",  zoomText: "#c0caf5",   zoomMuted: "#565f89", zoomDivider: "#1e2030",
+        badgeBg:   "#7aa2f722", badgeText:   "#7aa2f7",
+    },
+    monokai: {
+        headerBg: "#221F22",   headerBorder: "#403E41",   headerText: "#FCFCFA",
+        canvasBg:  "#19171a",
+        panelBg:   "#2D2A2E",  panelBorder:  "#403E41",
+        tabBarBg:  "#221F22",  activeTab:    "#403E41",   activeTabText: "#FCFCFA", inactiveTabText: "#727072",
+        sectionLabel: "#727072", bodyText:   "#FCFCFA",   divider: "#403E41",
+        toggleOn:  "#A9DC76",  accent:       "#AB9DF2",
+        overlayBtnBg: "#221F22", pullHandle: "#403E41",
+        codeBg:    "#221F22",  codeHeaderBg: "#19171a",  codeBorder: "#403E41", codeText: "#FCFCFA",
+        zoomBg:    "#2D2A2E",  zoomBorder:   "#403E41",  zoomText: "#FCFCFA",   zoomMuted: "#727072", zoomDivider: "#403E41",
+        badgeBg:   "#AB9DF222", badgeText:   "#AB9DF2",
+    },
+};
+
 function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const { participants: ps, messages: ms } = d;
     if (!ps.length) return "";
@@ -511,12 +562,12 @@ function SliderRow({ label, value, min, max, unit = "", fontSize = 12, onChange 
 }
 
 // ── Icon button ───────────────────────────────────────────────────────────────
-function IconBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function IconBtn({ active, onClick, accent = "#0a84ff", children }: { active: boolean; onClick: () => void; accent?: string; children: React.ReactNode }) {
     return (
         <button
             onClick={onClick}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125"
-            style={{ background: active ? "#0a84ff" : "#2a2a2c", color: "white" }}
+            style={{ background: active ? accent : "#2a2a2c", color: "white" }}
         >{children}</button>
     );
 }
@@ -532,113 +583,49 @@ function SettingsContent({
     exportPng: () => void; exportCode: () => void; exportJson: () => void; copyCode: () => void;
 }) {
     const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
+    const [tab, setTab] = useState<"general" | "components">("general");
+    const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
+
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* Theme */}
-            <div>
-                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Theme</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                    {(["light","dark","monokai"] as const).map(t => (
-                        <button key={t} onClick={() => upd({ theme: t })}
-                            style={{
-                                padding: mobile ? "10px 4px" : "8px 4px", borderRadius: 10, fontSize: fs(11), fontWeight: 700,
-                                textTransform: "capitalize", letterSpacing: "0.02em",
-                                border: opts.theme === t ? "2px solid #0a84ff" : "2px solid transparent",
-                                background: t === "light" ? "#f1f5f9" : t === "dark" ? "#16161e" : "#272822",
-                                color: t === "light" ? "#1e293b" : t === "dark" ? "#c0caf5" : "#f8f8f2",
-                                cursor: "pointer", transition: "border 0.15s",
-                            }}
-                        >{t}</button>
-                    ))}
-                </div>
+            {/* Tabs */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: ut.tabBarBg, borderRadius: 10, padding: 3 }}>
+                {(["general", "components"] as const).map(t => (
+                    <button key={t} onClick={() => setTab(t)} style={{
+                        padding: "7px 4px", borderRadius: 8, fontSize: fs(11), fontWeight: 700,
+                        textTransform: "capitalize", letterSpacing: "0.02em",
+                        background: tab === t ? ut.activeTab : "transparent",
+                        color: tab === t ? ut.activeTabText : ut.inactiveTabText,
+                        border: "none", cursor: "pointer", transition: "all 0.15s",
+                    }}>{t}</button>
+                ))}
             </div>
 
-            {isSequence && (
-                <>
-                    <div style={{ height: 1, background: "#222" }} />
-
-                    <div>
-                        <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Style</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 14 : 11 }}>
-                            {([ ["coloredLines","Lines"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"], ["showIcons","Icons"], ["showBigNumbers","Big Numbers"] ] as const).map(([k, label]) => (
-                                <div key={k} className="flex items-center justify-between cursor-pointer select-none"
-                                    onClick={() => upd({ [k]: !opts[k] } as Partial<Opts>)}>
-                                    <span style={{ fontSize: fs(13), color: "#bbb", fontWeight: 400 }}>{label}</span>
-                                    <div style={{
-                                        position: "relative", width: 42, height: 24, borderRadius: 12, flexShrink: 0,
-                                        background: opts[k] ? "#34c759" : "#333",
-                                        transition: "background 0.2s", cursor: "pointer",
-                                    }}>
-                                        <div style={{
-                                            position: "absolute", top: 2, width: 20, height: 20, borderRadius: 10,
-                                            background: "white", left: opts[k] ? 20 : 2,
-                                            transition: "left 0.2s ease",
-                                            boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-                                        }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+            {tab === "general" && <>
+                {/* Theme */}
+                <div>
+                    <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Theme</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                        {(["light","dark","monokai"] as const).map(t => (
+                            <button key={t} onClick={() => upd({ theme: t })}
+                                style={{
+                                    padding: mobile ? "10px 4px" : "8px 4px", borderRadius: 10, fontSize: fs(11), fontWeight: 700,
+                                    textTransform: "capitalize", letterSpacing: "0.02em",
+                                    border: opts.theme === t ? `2px solid ${ut.accent}` : "2px solid transparent",
+                                    background: t === "light" ? "#f1f5f9" : t === "dark" ? "#16161e" : "#272822",
+                                    color: t === "light" ? "#1e293b" : t === "dark" ? "#c0caf5" : "#f8f8f2",
+                                    cursor: "pointer", transition: "border 0.15s",
+                                }}
+                            >{t}</button>
+                        ))}
                     </div>
+                </div>
 
-                    <div style={{ height: 1, background: "#222" }} />
-
-                    {/* Box Overlay */}
+                {isSequence && <>
+                    <div style={{ height: 1, background: ut.divider }} />
                     <div>
-                        <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Overlay</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                            {([
-                                ["none",  "None",   "—"],
-                                ["gloss", "Gloss",  "✦"],
-                                ["hatch", "Hatch",  "▨"],
-                                ["dots",  "Dots",   "⁘"],
-                                ["pulse", "Pulse",  "◎"],
-                            ] as const).map(([v, label, icon]) => (
-                                <button key={v} onClick={() => upd({ boxOverlay: v })}
-                                    style={{
-                                        padding: mobile ? "10px 4px" : "8px 4px", borderRadius: 10,
-                                        fontSize: fs(11), fontWeight: 700, letterSpacing: "0.02em",
-                                        border: opts.boxOverlay === v ? "2px solid #0a84ff" : "2px solid transparent",
-                                        background: "#1e1e20", color: opts.boxOverlay === v ? "#0a84ff" : "#888",
-                                        cursor: "pointer", transition: "border 0.15s, color 0.15s",
-                                        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                                    }}
-                                ><span>{icon}</span><span>{label}</span></button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Icons editor — only when showIcons is on */}
-                    {opts.showIcons && participants.length > 0 && (
-                        <>
-                            <div style={{ height: 1, background: "#222" }} />
-                            <div>
-                                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Icons</div>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                    {participants.map(p => {
-                                        const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
-                                        return (
-                                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                                <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
-                                                <span style={{ fontSize: fs(12), color: "#bbb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
-                                                <IconPicker
-                                                    value={currentKey}
-                                                    color={p.color}
-                                                    onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    <div style={{ height: 1, background: "#222" }} />
-
-                    <div>
-                        <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Layout</div>
+                        <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Layout</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                             <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} onChange={v => updL({ stepHeight: v })} />
                             <SliderRow label="Width" value={layout.boxWidth} min={80} max={400} fontSize={fs(12)} onChange={v => updL({ boxWidth: v })} />
@@ -648,38 +635,118 @@ function SettingsContent({
                             <SliderRow label="Margin" value={layout.margin} min={120} max={200} fontSize={fs(12)} onChange={v => updL({ margin: v })} />
                         </div>
                     </div>
+                </>}
 
-                    <div style={{ height: 1, background: "#222" }} />
-                </>
-            )}
+                <div style={{ height: 1, background: ut.divider }} />
 
-            {!isSequence && <div style={{ height: 1, background: "#222" }} />}
-
-            <div>
-                <div style={{ fontSize: fs(10), fontWeight: 700, color: "#444", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 9 }}>Export</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-                    <button onClick={exportPng}
-                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: "#f97316", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
-                        PNG
-                    </button>
-                    <button onClick={exportCode}
-                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: "#3b82f6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
-                        Code
-                    </button>
-                    <button onClick={exportJson}
-                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: "#22c55e", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
-                        JSON
-                    </button>
-                    <button onClick={copyCode}
-                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: copied ? "#34c759" : "#8b5cf6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
-                        {copied ? "Copied" : "Copy"}
-                    </button>
+                <div>
+                    <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 9 }}>Download</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                        <button onClick={exportPng}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: "#f97316", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            PNG
+                        </button>
+                        <button onClick={exportCode}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: "#3b82f6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            Code
+                        </button>
+                        <button onClick={exportJson}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: "#22c55e", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            JSON
+                        </button>
+                        <button onClick={copyCode}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: copied ? "#34c759" : "#8b5cf6", color: "white", cursor: "pointer", padding: mobile ? "12px 0" : "10px 0", fontSize: fs(12) }}>
+                            {copied ? "Copied" : "Copy"}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </>}
+
+            {tab === "components" && isSequence && <>
+                {/* Style toggles */}
+                <div>
+                    <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Style</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 14 : 11 }}>
+                        {([ ["coloredLines","Lines"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"], ["showIcons","Icons"], ["showBigNumbers","Big Numbers"] ] as const).map(([k, label]) => (
+                            <div key={k} className="flex items-center justify-between cursor-pointer select-none"
+                                onClick={() => upd({ [k]: !opts[k] } as Partial<Opts>)}>
+                                <span style={{ fontSize: fs(13), color: ut.bodyText, fontWeight: 400 }}>{label}</span>
+                                <div style={{
+                                    position: "relative", width: 42, height: 24, borderRadius: 12, flexShrink: 0,
+                                    background: opts[k] ? ut.toggleOn : "#333",
+                                    transition: "background 0.2s", cursor: "pointer",
+                                }}>
+                                    <div style={{
+                                        position: "absolute", top: 2, width: 20, height: 20, borderRadius: 10,
+                                        background: "white", left: opts[k] ? 20 : 2,
+                                        transition: "left 0.2s ease",
+                                        boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                                    }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ height: 1, background: ut.divider }} />
+
+                {/* Box Overlay */}
+                <div>
+                    <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Overlay</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                        {([
+                            ["none",  "None",   "—"],
+                            ["gloss", "Gloss",  "✦"],
+                            ["hatch", "Hatch",  "▨"],
+                            ["dots",  "Dots",   "⁘"],
+                            ["pulse", "Pulse",  "◎"],
+                        ] as const).map(([v, label, icon]) => (
+                            <button key={v} onClick={() => upd({ boxOverlay: v })}
+                                style={{
+                                    padding: mobile ? "10px 4px" : "8px 4px", borderRadius: 10,
+                                    fontSize: fs(11), fontWeight: 700, letterSpacing: "0.02em",
+                                    border: opts.boxOverlay === v ? `2px solid ${ut.accent}` : "2px solid transparent",
+                                    background: ut.overlayBtnBg, color: opts.boxOverlay === v ? ut.accent : ut.inactiveTabText,
+                                    cursor: "pointer", transition: "border 0.15s, color 0.15s",
+                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                }}
+                            ><span>{icon}</span><span>{label}</span></button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Icons editor — only when showIcons is on */}
+                {opts.showIcons && participants.length > 0 && <>
+                    <div style={{ height: 1, background: ut.divider }} />
+                    <div>
+                        <div style={{ fontSize: fs(10), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Icons</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {participants.map(p => {
+                                const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
+                                return (
+                                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
+                                        <span style={{ fontSize: fs(12), color: ut.bodyText, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
+                                        <IconPicker
+                                            value={currentKey}
+                                            color={p.color}
+                                            onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </>}
+            </>}
+
+            {tab === "components" && !isSequence && (
+                <div style={{ color: ut.inactiveTabText, fontSize: fs(12), textAlign: "center", paddingTop: 20 }}>No component options for this diagram type.</div>
+            )}
         </div>
     );
 }
@@ -1133,29 +1200,30 @@ export default function SequenceTool() {
     }, [fireConfetti]);
 
     const zoomPct = Math.round(zoom * 100);
+    const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
 
     return (
         <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
 
             {/* ── HEADER ── */}
             <header className="flex items-center px-4 shrink-0"
-                style={{ height: 54, background: "#111113", borderBottom: "1px solid #27272a" }}>
-                <span className="font-bold text-[16px] tracking-tight" style={{ color: "#f4f4f5", letterSpacing: "-0.3px" }}>
+                style={{ height: 54, background: ut.headerBg, borderBottom: `1px solid ${ut.headerBorder}` }}>
+                <span className="font-bold text-[16px] tracking-tight" style={{ color: ut.headerText, letterSpacing: "-0.3px" }}>
                     Mermaid++
                 </span>
                 {diagramType !== "sequence" && (
-                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, background: "#0a84ff22",
-                        color: "#0a84ff", borderRadius: 6, padding: "2px 7px", textTransform: "uppercase",
+                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, background: ut.badgeBg,
+                        color: ut.badgeText, borderRadius: 6, padding: "2px 7px", textTransform: "uppercase",
                         letterSpacing: "0.08em" }}>
                         {diagramType}
                     </span>
                 )}
                 <div className="flex-1" />
                 <div className="flex gap-2">
-                    <IconBtn active={showCode} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
+                    <IconBtn active={showCode} accent={ut.accent} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
                         <Code2 size={20} strokeWidth={2} />
                     </IconBtn>
-                    <IconBtn active={showSettings} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
+                    <IconBtn active={showSettings} accent={ut.accent} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
                         <SlidersHorizontal size={20} strokeWidth={2} />
                     </IconBtn>
                 </div>
@@ -1169,25 +1237,21 @@ export default function SequenceTool() {
                     <div className="flex shrink-0 relative" style={{ width: codeWidth }}>
                         <div className="flex flex-col flex-1 overflow-hidden border-r"
                             style={{
-                                background: editorDark ? "#0d1117" : "#ffffff",
-                                borderColor: editorDark ? "#1e2334" : "#e2e8f0",
+                                background: ut.codeBg,
+                                borderColor: ut.codeBorder,
                             }}>
                             <div className="flex items-center justify-between px-4 py-2 border-b shrink-0"
                                 style={{
-                                    borderColor: editorDark ? "#1e2334" : "#e2e8f0",
-                                    background: editorDark ? "#0a0f1e" : "#f8fafc",
+                                    borderColor: ut.codeBorder,
+                                    background: ut.codeHeaderBg,
                                 }}>
                                 <span className="text-[9px] font-bold uppercase tracking-widest"
-                                    style={{ color: editorDark ? "#4a5568" : "#94a3b8" }}>Code</span>
+                                    style={{ color: ut.zoomMuted }}>Code</span>
                                 <div className="flex items-center gap-1">
                                     <button onClick={copyCode} title="Copy code"
                                         className="h-6 px-2 rounded flex items-center justify-center text-[10px] font-semibold transition-all"
-                                        style={{ color: copied ? "#22c55e" : (editorDark ? "#64748b" : "#94a3b8"), background: copied ? (editorDark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.08)") : "transparent" }}
+                                        style={{ color: copied ? ut.toggleOn : ut.zoomMuted, background: copied ? `${ut.toggleOn}22` : "transparent" }}
                                     >{copied ? "Copied" : "Copy"}</button>
-                                    <button onClick={() => setEditorDark(v => !v)} title={editorDark ? "Light mode" : "Dark mode"}
-                                        className="w-6 h-6 rounded flex items-center justify-center text-sm"
-                                        style={{ color: editorDark ? "#7dd3fc" : "#64748b" }}
-                                    >{editorDark ? "☀" : "☾"}</button>
                                 </div>
                             </div>
                             <textarea
@@ -1199,7 +1263,7 @@ export default function SequenceTool() {
                                 onPaste={handlePaste}
                                 style={{
                                     background: "transparent",
-                                    color: editorDark ? "#8892a4" : "#1e293b",
+                                    color: ut.codeText,
                                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                                     fontSize: "12.5px",
                                     lineHeight: 1.75,
@@ -1221,13 +1285,13 @@ export default function SequenceTool() {
                             style={{ width: 8, cursor: "col-resize" }}
                         >
                             <div className="h-12 rounded-full w-1"
-                                style={{ background: editorDark ? "#2a3148" : "#e2e8f0" }} />
+                                style={{ background: ut.codeBorder }} />
                         </div>
                     </div>
                 )}
 
                 {/* ── Diagram canvas ── */}
-                <div className="flex-1 relative" style={{ background: "#c8d0da" }}>
+                <div className="flex-1 relative" style={{ background: ut.canvasBg }}>
                     <div ref={canvasRef} className="absolute inset-0 overflow-hidden"
                         style={{ cursor: isPanning ? "grabbing" : "grab", touchAction: "none" }}
                         onMouseDown={e => {
@@ -1288,8 +1352,8 @@ export default function SequenceTool() {
                             className="absolute bottom-4 z-10 flex items-center"
                             style={{
                                 left: "50%", transform: "translateX(-50%)",
-                                background: "white",
-                                border: "1px solid #e2e8f0",
+                                background: ut.zoomBg,
+                                border: `1px solid ${ut.zoomBorder}`,
                                 borderRadius: 12,
                                 padding: isMobile ? "4px 8px" : "3px 10px",
                                 boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
@@ -1300,20 +1364,20 @@ export default function SequenceTool() {
                             <button
                                 onClick={() => { setZoom(z => parseFloat(Math.max(0.2, z - 0.1).toFixed(2))); setFitActive(false); }}
                                 className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
-                                style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: "#64748b", fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
+                                style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: ut.zoomMuted, fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
                             >−</button>
 
-                            <span style={{ color: "#1e293b", fontSize: isMobile ? 13 : 11, fontWeight: 600, minWidth: isMobile ? 48 : 38, textAlign: "center" }}>
+                            <span style={{ color: ut.zoomText, fontSize: isMobile ? 13 : 11, fontWeight: 600, minWidth: isMobile ? 48 : 38, textAlign: "center" }}>
                                 {zoomPct}%
                             </span>
 
                             <button
                                 onClick={() => { setZoom(z => parseFloat(Math.min(4, z + 0.1).toFixed(2))); setFitActive(false); }}
                                 className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
-                                style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: "#64748b", fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
+                                style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: ut.zoomMuted, fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
                             >+</button>
 
-                            <div style={{ width: 1, height: 14, background: "#e2e8f0", margin: isMobile ? "0 6px" : "0 6px" }} />
+                            <div style={{ width: 1, height: 14, background: ut.zoomDivider, margin: isMobile ? "0 6px" : "0 6px" }} />
 
                             {/* Desktop: preset zoom buttons */}
                             {!isMobile && [50, 75, 100, 150, 200].map(p => (
@@ -1322,13 +1386,13 @@ export default function SequenceTool() {
                                     onClick={() => { setZoom(p / 100); setFitActive(false); }}
                                     className="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-all hover:bg-black/5"
                                     style={{
-                                        color: !fitActive && zoomPct === p ? "#3b82f6" : "#64748b",
-                                        background: !fitActive && zoomPct === p ? "rgba(59,130,246,0.08)" : "transparent",
+                                        color: !fitActive && zoomPct === p ? ut.accent : ut.zoomMuted,
+                                        background: !fitActive && zoomPct === p ? `${ut.accent}14` : "transparent",
                                     }}
                                 >{p}%</button>
                             ))}
 
-                            {!isMobile && <div style={{ width: 1, height: 14, background: "#e2e8f0", margin: "0 6px" }} />}
+                            {!isMobile && <div style={{ width: 1, height: 14, background: ut.zoomDivider, margin: "0 6px" }} />}
 
                             <button
                                 onClick={fitZoom}
@@ -1340,19 +1404,19 @@ export default function SequenceTool() {
                                     paddingBottom: isMobile ? 0 : "2px",
                                     fontSize: isMobile ? 13 : 10,
                                     fontWeight: 700,
-                                    color: fitActive ? "#3b82f6" : "#64748b",
-                                    background: fitActive ? "rgba(59,130,246,0.08)" : "transparent",
+                                    color: fitActive ? ut.accent : ut.zoomMuted,
+                                    background: fitActive ? `${ut.accent}14` : "transparent",
                                     letterSpacing: "0.04em",
                                 }}
                             >Fit</button>
 
                             {!isMobile && <>
-                                <div style={{ width: 1, height: 14, background: "#e2e8f0", margin: "0 6px" }} />
+                                <div style={{ width: 1, height: 14, background: ut.zoomDivider, margin: "0 6px" }} />
                                 <div style={{ position: "relative" }}>
                                     <button
                                         onClick={() => setShowShortcuts(v => !v)}
                                         className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
-                                        style={{ width: 20, height: 20, fontSize: 10, fontWeight: 700, color: showShortcuts ? "#3b82f6" : "#94a3b8", border: `1px solid ${showShortcuts ? "#3b82f6" : "#cbd5e1"}`, borderRadius: "50%", lineHeight: 1 }}
+                                        style={{ width: 20, height: 20, fontSize: 10, fontWeight: 700, color: showShortcuts ? ut.accent : ut.zoomMuted, border: `1px solid ${showShortcuts ? ut.accent : ut.zoomBorder}`, borderRadius: "50%", lineHeight: 1 }}
                                     >?</button>
                                     {showShortcuts && (
                                         <div
@@ -1360,8 +1424,8 @@ export default function SequenceTool() {
                                                 position: "absolute",
                                                 bottom: "calc(100% + 10px)",
                                                 right: 0,
-                                                background: "white",
-                                                border: "1px solid #e2e8f0",
+                                                background: ut.zoomBg,
+                                                border: `1px solid ${ut.zoomBorder}`,
                                                 borderRadius: 10,
                                                 boxShadow: "0 4px 24px rgba(0,0,0,0.14)",
                                                 padding: "12px 14px",
@@ -1369,7 +1433,7 @@ export default function SequenceTool() {
                                                 zIndex: 50,
                                             }}
                                         >
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>Keyboard Shortcuts</div>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: ut.zoomMuted, letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>Keyboard Shortcuts</div>
                                             {[
                                                 ["Scroll", "Pan canvas"],
                                                 ["Ctrl+Scroll", "Zoom to cursor"],
@@ -1381,8 +1445,8 @@ export default function SequenceTool() {
                                                 ["⌘− / Ctrl+−", "Zoom out"],
                                             ].map(([key, desc]) => (
                                                 <div key={key} className="flex items-center justify-between" style={{ gap: 12, marginBottom: 5 }}>
-                                                    <code style={{ fontSize: 10, background: "#f1f5f9", color: "#334155", padding: "1px 6px", borderRadius: 4, fontFamily: "monospace", whiteSpace: "nowrap" }}>{key}</code>
-                                                    <span style={{ fontSize: 11, color: "#64748b" }}>{desc}</span>
+                                                    <code style={{ fontSize: 10, background: ut.activeTab, color: ut.zoomText, padding: "1px 6px", borderRadius: 4, fontFamily: "monospace", whiteSpace: "nowrap" }}>{key}</code>
+                                                    <span style={{ fontSize: 11, color: ut.zoomMuted }}>{desc}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -1395,7 +1459,7 @@ export default function SequenceTool() {
 
                 {/* Desktop: Settings panel */}
                 {!isMobile && showSettings && (
-                    <div className="shrink-0 flex flex-col" style={{ width: 268, background: "#161618", borderLeft: "1px solid #2a2a2a" }}>
+                    <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "20px 16px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} participants={diagram.participants} isSequence={isSequence}
                                 upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} />
@@ -1406,21 +1470,21 @@ export default function SequenceTool() {
 
             {/* ── Mobile: Code editor full-screen overlay ── */}
             {isMobile && showCode && (
-                <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#0d1117" }}>
+                <div className="fixed inset-0 z-50 flex flex-col" style={{ background: ut.codeBg }}>
                     <div className="flex items-center justify-between px-4 shrink-0"
-                        style={{ height: 54, background: "#0a0f1e", borderBottom: "1px solid #1e2334" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                        style={{ height: 54, background: ut.codeHeaderBg, borderBottom: `1px solid ${ut.codeBorder}` }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: ut.zoomMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                             Code Editor
                         </span>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={copyCode}
-                                style={{ fontSize: 13, fontWeight: 600, color: copied ? "#22c55e" : "#64748b", padding: "6px 0" }}
+                                style={{ fontSize: 13, fontWeight: 600, color: copied ? ut.toggleOn : ut.zoomMuted, padding: "6px 0" }}
                             >{copied ? "Copied!" : "Copy"}</button>
                             <button
                                 onClick={() => setShowCode(false)}
                                 className="w-9 h-9 rounded-full flex items-center justify-center"
-                                style={{ background: "#1e2334", color: "#94a3b8" }}>
+                                style={{ background: ut.activeTab, color: ut.zoomMuted }}>
                                 <X size={16} strokeWidth={2.5} />
                             </button>
                         </div>
@@ -1436,7 +1500,7 @@ export default function SequenceTool() {
                         onPaste={handlePaste}
                         style={{
                             background: "transparent",
-                            color: "#8892a4",
+                            color: ut.codeText,
                             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                             fontSize: "16px",
                             lineHeight: 1.8,
@@ -1445,11 +1509,11 @@ export default function SequenceTool() {
                         }}
                     />
                     {/* Done button */}
-                    <div className="shrink-0 px-4 py-3" style={{ borderTop: "1px solid #1e2334", background: "#0a0f1e" }}>
+                    <div className="shrink-0 px-4 py-3" style={{ borderTop: `1px solid ${ut.codeBorder}`, background: ut.codeHeaderBg }}>
                         <button
                             onClick={() => setShowCode(false)}
                             className="w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95"
-                            style={{ background: "#0a84ff", color: "white" }}
+                            style={{ background: ut.accent, color: "white" }}
                         >Done</button>
                     </div>
                 </div>
@@ -1464,12 +1528,12 @@ export default function SequenceTool() {
                 >
                     <div
                         className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-2xl overflow-hidden"
-                        style={{ background: "#161618", maxHeight: "84vh" }}
+                        style={{ background: ut.panelBg, maxHeight: "84vh" }}
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Pull handle */}
                         <div className="flex justify-center pt-3 pb-1 shrink-0">
-                            <div style={{ width: 36, height: 4, background: "#333", borderRadius: 2 }} />
+                            <div style={{ width: 36, height: 4, background: ut.pullHandle, borderRadius: 2 }} />
                         </div>
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
