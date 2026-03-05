@@ -73,7 +73,7 @@ function guessIconKey(s: string): string {
     return "package";
 }
 
-function renderIcon(key: string, icx: number, icy: number, size: number): string {
+function renderIcon(key: string, icx: number, icy: number, size: number, color = "white"): string {
     const nodes = ICON_NODES[key] ?? ICON_NODES.package;
     const s = size / 24;
     const tx = (icx - size / 2).toFixed(1);
@@ -83,7 +83,7 @@ function renderIcon(key: string, icx: number, icy: number, size: number): string
         const attrs = Object.entries(props).map(([k, v]) => `${k}="${v}"`).join(" ");
         return `<${tag} ${attrs}/>`;
     }).join("");
-    return `<g transform="translate(${tx},${ty}) scale(${s.toFixed(4)})" fill="none" stroke="white" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${elems}</g>`;
+    return `<g transform="translate(${tx},${ty}) scale(${s.toFixed(4)})" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${elems}</g>`;
 }
 
 // ── Diagram type detection ────────────────────────────────────────────────────
@@ -292,7 +292,7 @@ const LIFELINE_DASH: Record<string, { da: string; cap?: string; sw?: number }> =
 };
 
 const THEMES: Record<string, { bg: string; titleFill: string; boxStroke: string; boxStrokeW: string; labelFill: string; plainTextFill: string }> = {
-    light:   { bg: "#ffffff", titleFill: "#1e293b",  boxStroke: "#000000", boxStrokeW: "2",   labelFill: "white",   plainTextFill: "#1e293b" },
+    light:   { bg: "#ffffff", titleFill: "#1e293b",  boxStroke: "#000000", boxStrokeW: "2",   labelFill: "#000000", plainTextFill: "#1e293b" },
     dark:    { bg: "#16161e", titleFill: "#c0caf5",  boxStroke: "none",    boxStrokeW: "0",   labelFill: "white",   plainTextFill: "#c0caf5" },
     monokai: { bg: "#272822", titleFill: "#f8f8f2",  boxStroke: "none",    boxStrokeW: "0",   labelFill: "#272822", plainTextFill: "#f8f8f2" },
 };
@@ -381,7 +381,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             const estLabelW = p.label.length * (FS * 0.6);
             const contentW = ISIZE + GAP + estLabelW;
             const contentX = Math.max(x + IPAD, cx(i) - contentW / 2);
-            parts.push(renderIcon(iconKey, contentX + ISIZE / 2, y + BH / 2, ISIZE));
+            parts.push(renderIcon(iconKey, contentX + ISIZE / 2, y + BH / 2, ISIZE, th.labelFill));
             parts.push(`<text x="${contentX + ISIZE + GAP}" y="${y + BH / 2 + 1}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         } else {
             parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
@@ -450,7 +450,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         }
         if (o.coloredNumbers) {
             parts.push(`<circle cx="${fx}" cy="${y}" r="10" fill="${fp.color}" stroke="${fp.color}" stroke-width="2"/>`);
-            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="white">${msg.displayStep ?? msg.step}</text>`);
+            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${th.labelFill}">${msg.displayStep ?? msg.step}</text>`);
         }
     });
     ps.forEach((p, i) => renderBox(p, i, H - BOT_PAD - BH));
