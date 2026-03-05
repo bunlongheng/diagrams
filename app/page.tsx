@@ -307,7 +307,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const diagramTitle = d.title ?? DEFAULT_DIAGRAM_TITLE;
     const TOP_PAD = l.margin;
     const BOT_PAD = l.margin;
-    const TITLE_H = 50;
+    const TITLE_H = 68;
     const BIG_NUM_H = o.showBigNumbers ? 100 : 0;
     const TP = 50 + BIG_NUM_H;
     // Auto-fit box width to label content; Width slider = minimum / extra padding
@@ -339,8 +339,8 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const subBH        = isDark ? "#e2e8f0"  : "#a0aec0";
     const subPipe      = isDark ? "#94a3b8"  : "#cbd5e0";
     const subDate      = isDark ? "#94a3b8"  : "#718096";
-    parts.push(`<text x="${LP}" y="${titleY - 7}" dominant-baseline="middle" font-family="${f}" font-size="20" font-weight="800" fill="${titleColor}">${esc(diagramTitle)}</text>`);
-    parts.push(`<text x="${LP}" y="${titleY + 15}" dominant-baseline="middle" font-family="${f}" font-size="11" fill="${subDate}"><tspan font-weight="800" fill="${subBH}">BH</tspan><tspan font-weight="300" fill="${subPipe}"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
+    parts.push(`<text x="${LP}" y="${titleY - 10}" dominant-baseline="middle" font-family="${f}" font-size="30" font-weight="800" fill="${titleColor}">${esc(diagramTitle)}</text>`);
+    parts.push(`<text x="${LP}" y="${titleY + 20}" dominant-baseline="middle" font-family="${f}" font-size="11" fill="${subDate}"><tspan font-weight="800" fill="${subBH}">BH</tspan><tspan font-weight="300" fill="${subPipe}"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
     ps.forEach((p, i) => {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
@@ -372,7 +372,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const fp = ps[fi];
         const lc = o.coloredLines ? fp.color : "#374151";
         const tc = o.coloredText ? fp.color : th.plainTextFill;
-        const pillTextFill = o.theme === "monokai" ? "#272822" : "#000000";
+        const pillTextFill = o.theme === "light" ? "#000000" : "#ffffff";
         if (fi === ti) {
             const isDashed = msg.arrow === "dashed";
             const pathStyle = isDashed ? `fill="none" stroke="${lc}"${DASHED_STYLE}` : `fill="none" stroke="${lc}" stroke-width="1.5"`;
