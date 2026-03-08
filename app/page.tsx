@@ -468,6 +468,25 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const tc = o.coloredText ? fp.color : th.plainTextFill;
         const pillTextFill = o.theme === "light" ? "#000000" : "#ffffff";
         if (fi === ti) {
+            const lowHeight = MG >= 30 && MG <= 40;
+            if (lowHeight) {
+                // Compact mode: skip arrow, render pill inline next to step number
+                const pillOffset = o.coloredNumbers ? fx + 14 : fx + 6;
+                if (o.coloredText) {
+                    const pillH = FS + 8, pillW = Math.max(40, msg.text.length * (FS * 0.62) + 12);
+                    const pillX = pillOffset, pillY = y - pillH / 2;
+                    const isMonokai = o.theme === "monokai";
+                    if (isMonokai) {
+                        parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.15" stroke="${fp.color}" stroke-width="1.5"/>`);
+                    } else {
+                        parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
+                        parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.5"/>`);
+                    }
+                    parts.push(`<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(msg.text)}</text>`);
+                } else {
+                    parts.push(`<text x="${pillOffset}" y="${y+1}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" fill="${tc}">${esc(msg.text)}</text>`);
+                }
+            } else {
             const isDashed = msg.arrow === "dashed";
             const pathStyle = isDashed ? `fill="none" stroke="${lc}"${DASHED_STYLE}` : `fill="none" stroke="${lc}" stroke-width="1.5"`;
             const selfX1 = o.coloredNumbers ? fx + 11 : fx;
@@ -486,6 +505,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                 parts.push(`<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(msg.text)}</text>`);
             } else {
                 parts.push(`<text x="${fx+SW+5}" y="${y+SH/2+1}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" fill="${tc}">${esc(msg.text)}</text>`);
+            }
             }
         } else {
             const dir = tx > fx ? 1 : -1;
