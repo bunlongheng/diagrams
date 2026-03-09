@@ -477,6 +477,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                     const pillX = pillOffset, pillY = y - pillH / 2;
                     const isMonokai = o.theme === "monokai";
                     if (isMonokai) {
+                        parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
                         parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.15" stroke="${fp.color}" stroke-width="1.5"/>`);
                     } else {
                         parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
@@ -497,6 +498,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                 const pillX = fx + SW + 5, pillY = y + SH / 2 - pillH / 2;
                 const isMonokai = o.theme === "monokai";
                 if (isMonokai) {
+                    parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
                     parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.15" stroke="${fp.color}" stroke-width="1.5"/>`);
                 } else {
                     parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
@@ -526,6 +528,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                 const pillY = y - pillH / 2;
                 const isMonokai = o.theme === "monokai";
                 if (isMonokai) {
+                    parts.push(`<rect x="${mid - pillW / 2}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
                     parts.push(`<rect x="${mid - pillW / 2}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fp.color}" fill-opacity="0.15" stroke="${fp.color}" stroke-width="1.5"/>`);
                 } else {
                     parts.push(`<rect x="${mid - pillW / 2}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
