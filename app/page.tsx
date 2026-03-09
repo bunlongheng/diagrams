@@ -1399,6 +1399,7 @@ export default function SequenceTool() {
                 }}
                 onMouseLeave={() => setHoverScreenY(null)}
                 onMouseDown={e => {
+                    if ((e.target as HTMLElement).closest("#diagram-title")) return;
                     isDragging.current = true; setIsPanning(true);
                     dragStartMouse.current = { x: e.clientX, y: e.clientY };
                     dragStartPan.current = { x: panRef.current.x, y: panRef.current.y };
@@ -1596,7 +1597,7 @@ export default function SequenceTool() {
                     <div ref={canvasRef} className="absolute inset-0 overflow-hidden"
                         style={{ cursor: isPanning ? "grabbing" : "grab", touchAction: "none" }}
                         onMouseDown={e => {
-                            if ((e.target as HTMLElement).closest("button")) return;
+                            if ((e.target as HTMLElement).closest("button,#diagram-title")) return;
                             isDragging.current = true;
                             setIsPanning(true);
                             dragStartMouse.current = { x: e.clientX, y: e.clientY };
