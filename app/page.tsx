@@ -662,8 +662,8 @@ function SettingsContent({
                 {/* Theme */}
                 <div>
                     <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Theme</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-                        {(["dark", "monokai"] as const).map(t => (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5 }}>
+                        {(["light", "dark", "monokai"] as const).map(t => (
                             <button key={t} onClick={() => upd({ theme: t })}
                                 style={{
                                     padding: mobile ? "8px 4px" : "6px 4px", borderRadius: 8, fontSize: fs(10), fontWeight: 700,
@@ -1200,7 +1200,7 @@ export default function SequenceTool() {
         }
         const c = localStorage.getItem("nsd-code");
         if (c) setCode(c);
-        try { const o = localStorage.getItem("nsd-opts"); if (o) { const parsed = JSON.parse(o); if (parsed.theme === "light") parsed.theme = "dark"; setOpts(prev => ({ ...prev, ...parsed })); } } catch {}
+        try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
         try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
     }, []);
 
