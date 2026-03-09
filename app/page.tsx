@@ -1381,7 +1381,7 @@ export default function SequenceTool() {
     };
 
     const exportPng = useCallback(() => {
-        const exportSvg = isSequence ? buildSvg(diagram, opts, layout) : mermaidSvg;
+        const exportSvg = isSequence ? buildSvg(diagram, opts, computedLayout) : mermaidSvg;
         if (!exportSvg) return;
         const url = URL.createObjectURL(new Blob([exportSvg], { type: "image/svg+xml" }));
         const img = new Image();
@@ -1395,7 +1395,7 @@ export default function SequenceTool() {
             URL.revokeObjectURL(url);
         };
         img.src = url;
-    }, [diagram, opts, layout, isSequence, mermaidSvg]);
+    }, [diagram, opts, computedLayout, isSequence, mermaidSvg]);
 
     const exportCode = useCallback(() => {
         const a = document.createElement("a");
