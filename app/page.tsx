@@ -1259,16 +1259,32 @@ export default function SequenceTool() {
     // ── Auto layout — compute from diagram content ────────────────────────
     const computedLayout = useMemo((): Layout => {
         if (!opts.autoLayout) return layout;
-        const FS = 13;
-        const HPAD = 24, ICON_W = opts.showIcons ? 26 : 0;
-        const boxWidth = Math.max(100, ...diagram.participants.map(p =>
+
+        const rows = diagram.messages.length;
+        const ICON_W = opts.showIcons ? 26 : 0;
+
+        // Font size: shrink slightly for large diagrams
+        const FS = rows > 30 ? 11 : rows > 15 ? 12 : 13;
+
+        // Box width: fit the longest participant label
+        const HPAD = 24;
+        const boxWidth = Math.max(90, ...diagram.participants.map(p =>
             Math.ceil(p.label.length * (FS * 0.65) + ICON_W + HPAD)
         ));
+
+        // Step height: compress for dense diagrams
+        const stepHeight = rows > 40 ? 32 : rows > 20 ? 36 : rows > 10 ? 40 : 44;
+
+        // Spacing: based on longest message label + box width, capped reasonably
         const maxMsgLen = diagram.messages.reduce((m, msg) => Math.max(m, msg.text.length), 0);
-        const spacing = Math.round(Math.min(Math.max(boxWidth + 80, boxWidth + maxMsgLen * 5.5), 420));
-        const stepHeight = 42;
-        const vPad = 44;
-        const margin = Math.round(Math.max(80, spacing * 0.45));
+        const spacing = Math.round(Math.min(Math.max(boxWidth + 60, boxWidth + maxMsgLen * (FS * 0.52)), 480));
+
+        // vPad: tighter for dense diagrams
+        const vPad = rows > 20 ? 30 : 44;
+
+        // margin: proportional to spacing
+        const margin = Math.round(Math.max(80, spacing * 0.4));
+
         return { textSize: FS, boxWidth, spacing, stepHeight, vPad, margin };
     }, [opts.autoLayout, opts.showIcons, diagram, layout]);
 
