@@ -410,7 +410,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const subBH        = isDark ? "#e2e8f0"  : "#a0aec0";
     const subPipe      = isDark ? "#94a3b8"  : "#cbd5e0";
     const subDate      = isDark ? "#94a3b8"  : "#718096";
-    parts.push(`<text x="${LP}" y="${titleY - 10}" dominant-baseline="middle" font-family="${f}" font-size="30" font-weight="800" fill="${titleColor}">${esc(diagramTitle)}</text>`);
+    parts.push(`<text id="diagram-title" x="${LP}" y="${titleY - 10}" dominant-baseline="middle" font-family="${f}" font-size="30" font-weight="800" fill="${titleColor}" style="cursor:pointer">${esc(diagramTitle)}</text>`);
     parts.push(`<text x="${LP}" y="${titleY + 20}" dominant-baseline="middle" font-family="${f}" font-size="11" fill="${subDate}"><tspan font-weight="800" fill="${subBH}">BH</tspan><tspan font-weight="300" fill="${subPipe}"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
     ps.forEach((p, i) => {
         const c = o.coloredLines ? p.color + "60" : "#d1d5db";
@@ -933,6 +933,7 @@ export default function SequenceTool() {
     const [viewMode, setViewMode] = useState(false);
     const [hoverScreenY, setHoverScreenY] = useState<number | null>(null);
     const [lanIp, setLanIp] = useState<string | null>(null);
+    const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
 
     const diagramType = useMemo(() => detectDiagramType(code), [code]);
     const isSequence = diagramType === "sequence";
@@ -953,6 +954,16 @@ export default function SequenceTool() {
     const zoomRef = useRef(1.0);
     const panRef = useRef({ x: 0, y: 0 });
     const spaceHeld = useRef(false);
+
+    // ── Title inline edit ─────────────────────────────────────────────────
+    const commitTitle = useCallback((val: string) => {
+        setTitleEdit(null);
+        const t = val.trim();
+        if (!t) return;
+        setCode(prev => /^title:\s*.+$/im.test(prev)
+            ? prev.replace(/^title:\s*.+$/im, `title: ${t}`)
+            : prev.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1title: ${t}\n`));
+    }, []);
 
     // Apply transform directly to DOM — bypasses React render cycle for smooth gestures
     const applyTransform = useCallback((p: { x: number; y: number }, z: number) => {
@@ -1431,6 +1442,10 @@ export default function SequenceTool() {
                         transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${zoom})`,
                         transformOrigin: "center center", willChange: "transform",
                     }}
+                        onClick={e => {
+                            const el = (e.target as Element).closest("#diagram-title");
+                            if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); }
+                        }}
                         dangerouslySetInnerHTML={{ __html: activeSvg }}
                     />
                 )}
@@ -1616,6 +1631,10 @@ export default function SequenceTool() {
                                     transformOrigin: "center center",
                                     willChange: "transform",
                                 }}
+                                onClick={e => {
+                                    const el = (e.target as Element).closest("#diagram-title");
+                                    if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); }
+                                }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
                         ) : mounted && !activeSvg && !isSequence ? (
@@ -1632,6 +1651,35 @@ export default function SequenceTool() {
                             </div>
                         )}
                     </div>
+
+                    {/* Title inline editor overlay */}
+                    {titleEdit && (
+                        <input
+                            autoFocus
+                            value={titleEdit.value}
+                            onChange={e => setTitleEdit(t => t ? { ...t, value: e.target.value } : null)}
+                            onBlur={e => commitTitle(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") commitTitle((e.target as HTMLInputElement).value); if (e.key === "Escape") setTitleEdit(null); }}
+                            style={{
+                                position: "fixed",
+                                left: titleEdit.rect.left,
+                                top: titleEdit.rect.top,
+                                width: Math.max(titleEdit.rect.width, 220),
+                                height: titleEdit.rect.height || 36,
+                                fontSize: 30 * zoom,
+                                fontWeight: 800,
+                                fontFamily: `'${opts.font}', sans-serif`,
+                                color: (UI_THEMES[opts.theme] ?? UI_THEMES.light).bodyText,
+                                background: "transparent",
+                                border: "none",
+                                borderBottom: `2px solid ${(UI_THEMES[opts.theme] ?? UI_THEMES.light).accent}`,
+                                outline: "none",
+                                padding: 0,
+                                lineHeight: 1,
+                                zIndex: 100,
+                            }}
+                        />
+                    )}
 
                     {/* Zoom toolbar */}
                     {mounted && (
