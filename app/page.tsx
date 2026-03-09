@@ -29,7 +29,7 @@ interface Diagram { participants: Participant[]; messages: SeqMsg[]; title?: str
 interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; showIcons: boolean; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean }
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
-const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "dark", showIcons: false, icons: {}, boxOverlay: "none", autoLayout: true };
+const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "light", showIcons: false, icons: {}, boxOverlay: "none", autoLayout: true };
 const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120, vPad: 44 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
