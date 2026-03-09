@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Code2, SlidersHorizontal, X } from "lucide-react";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
+import { QRCodeSVG } from "qrcode.react";
+import LZString from "lz-string";
 
 // ── Mermaid Prism grammar ──────────────────────────────────────────────────────
 Prism.languages.mermaid = {
@@ -395,7 +397,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const lifelineCapAttr = ld.cap ? ` stroke-linecap="${ld.cap}"` : "";
     const th = THEMES[o.theme] ?? THEMES.light;
     // long-dash style for dashed (response) arrows
-    const DASHED_STYLE = ` stroke-dasharray="12 5" stroke-width="1.5"`;
+    const DASHED_STYLE = ` stroke-dasharray="3 4" stroke-width="1.5"`;
     const parts: string[] = [];
     const defs: string[] = [];
     parts.push(`<rect width="${W}" height="${H}" fill="${th.bg}"/>`);
@@ -612,36 +614,41 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
     );
 }
 
-// ── URL encode/decode helpers ──────────────────────────────────────────────────
+// ── URL encode/decode helpers (LZ-String compressed) ──────────────────────────
 function encodeData(s: string): string {
-    try { return btoa(encodeURIComponent(s).replace(/%([0-9A-F]{2})/g, (_, p) => String.fromCharCode(parseInt(p, 16)))); } catch { return ""; }
+    try { return LZString.compressToEncodedURIComponent(s); } catch { return ""; }
 }
 function decodeData(s: string): string {
+    // Try LZ-String first, fall back to legacy base64 for old URLs
+    try {
+        const lz = LZString.decompressFromEncodedURIComponent(s);
+        if (lz) return lz;
+    } catch {}
     try { return decodeURIComponent(atob(s).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")); } catch { return ""; }
 }
 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share,
+    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
-    mobile?: boolean; participants?: Participant[]; isSequence?: boolean;
+    mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void;
     copyCode: () => void; copyLink: () => void; share: () => void;
 }) {
     const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
-    const [tab, setTab] = useState<"general" | "components">("general");
+    const [tab, setTab] = useState<"general" | "components" | "share">("general");
     const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
             {/* Tabs */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: ut.tabBarBg, borderRadius: 10, padding: 3 }}>
-                {(["general", "components"] as const).map(t => (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, background: ut.tabBarBg, borderRadius: 10, padding: 3 }}>
+                {(["general", "components", "share"] as const).map(t => (
                     <button key={t} onClick={() => setTab(t)} style={{
                         padding: "7px 4px", borderRadius: 8, fontSize: fs(11), fontWeight: 700,
                         textTransform: "capitalize", letterSpacing: "0.02em",
@@ -687,6 +694,23 @@ function SettingsContent({
                         </div>
                     </div>
                 </>}
+
+            </>}
+
+            {tab === "share" && <>
+                {/* QR code → read-only view */}
+                {viewUrl && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                    <div style={{ background: "#ffffff", borderRadius: 12, padding: 10, display: "inline-flex" }}>
+                        <QRCodeSVG value={viewUrl} size={160} bgColor="#ffffff" fgColor="#1e293b" level="M" />
+                    </div>
+                    <p style={{ fontSize: fs(10), color: ut.sectionLabel, textAlign: "center", margin: 0, lineHeight: 1.5 }}>
+                        Scan to open read-only canvas
+                    </p>
+                    <a href={viewUrl} target="_blank" rel="noreferrer"
+                        style={{ fontSize: fs(11), color: ut.accent, fontWeight: 600, textDecoration: "none", wordBreak: "break-all", textAlign: "center" }}>
+                        Open view →
+                    </a>
+                </div>}
 
                 <div style={{ height: 1, background: ut.divider }} />
 
@@ -753,6 +777,25 @@ function SettingsContent({
                                 }}
                             ><span>{icon}</span><span>{label}</span></button>
                         ))}
+                    </div>
+                </div>
+
+                {/* Icons toggle */}
+                <div style={{ height: 1, background: ut.divider }} />
+                <div className="flex items-center justify-between cursor-pointer select-none"
+                    onClick={() => upd({ showIcons: !opts.showIcons })}>
+                    <span style={{ fontSize: fs(13), color: ut.bodyText, fontWeight: 400 }}>Icons</span>
+                    <div style={{
+                        position: "relative", width: 42, height: 24, borderRadius: 12, flexShrink: 0,
+                        background: opts.showIcons ? ut.toggleOn : ut.tabBarBg,
+                        transition: "background 0.2s", cursor: "pointer",
+                    }}>
+                        <div style={{
+                            position: "absolute", top: 2, width: 20, height: 20, borderRadius: 10,
+                            background: "white", left: opts.showIcons ? 20 : 2,
+                            transition: "left 0.2s ease",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                        }} />
                     </div>
                 </div>
 
@@ -887,6 +930,9 @@ export default function SequenceTool() {
     const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
     const [zoom, setZoom] = useState(1.0);
     const [mermaidSvg, setMermaidSvg] = useState<string>("");
+    const [viewMode, setViewMode] = useState(false);
+    const [hoverScreenY, setHoverScreenY] = useState<number | null>(null);
+    const [lanIp, setLanIp] = useState<string | null>(null);
 
     const diagramType = useMemo(() => detectDiagramType(code), [code]);
     const isSequence = diagramType === "sequence";
@@ -897,6 +943,7 @@ export default function SequenceTool() {
     const [showShortcuts, setShowShortcuts] = useState(false);
 
     const canvasRef = useRef<HTMLDivElement>(null);
+    const svgWrapRef = useRef<HTMLDivElement>(null);
     const isResizing = useRef(false);
     const resizeStartX = useRef(0);
     const resizeStartW = useRef(340);
@@ -906,6 +953,20 @@ export default function SequenceTool() {
     const zoomRef = useRef(1.0);
     const panRef = useRef({ x: 0, y: 0 });
     const spaceHeld = useRef(false);
+
+    // Apply transform directly to DOM — bypasses React render cycle for smooth gestures
+    const applyTransform = useCallback((p: { x: number; y: number }, z: number) => {
+        if (svgWrapRef.current) {
+            svgWrapRef.current.style.transform = `translate(calc(-50% + ${p.x}px), calc(-50% + ${p.y}px)) scale(${z})`;
+        }
+    }, []);
+
+    // Sync refs → React state (call on gesture end only)
+    const syncTransformState = useCallback(() => {
+        setZoom(zoomRef.current);
+        setPanX(panRef.current.x);
+        setPanY(panRef.current.y);
+    }, []);
 
     // Keep refs in sync for use in event handlers
     useEffect(() => { zoomRef.current = zoom; }, [zoom]);
@@ -944,17 +1005,13 @@ export default function SequenceTool() {
                 const newPanY = dy * (1 - ratio) + panRef.current.y * ratio;
                 zoomRef.current = newZoom;
                 panRef.current = { x: newPanX, y: newPanY };
-                setZoom(newZoom);
-                setPanX(newPanX);
-                setPanY(newPanY);
-                setFitActive(false);
+                applyTransform(panRef.current, zoomRef.current);
+                setZoom(newZoom); setPanX(newPanX); setPanY(newPanY); setFitActive(false);
             } else {
                 // Pan (two-finger scroll, no modifier)
-                const newPanX = panRef.current.x - e.deltaX;
-                const newPanY = panRef.current.y - e.deltaY;
-                panRef.current = { x: newPanX, y: newPanY };
-                setPanX(newPanX);
-                setPanY(newPanY);
+                panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
+                applyTransform(panRef.current, zoomRef.current);
+                setPanX(panRef.current.x); setPanY(panRef.current.y);
             }
         };
         el.addEventListener("wheel", onWheel, { passive: false });
@@ -986,6 +1043,12 @@ export default function SequenceTool() {
                 startZoomVal = zoomRef.current;
                 startPinchPanX = panRef.current.x;
                 startPinchPanY = panRef.current.y;
+                // midpoint relative to canvas center
+                const rect = el.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                startPinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - cx;
+                startPinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - cy;
                 isTouchPanning = false;
             } else if (e.touches.length === 1) {
                 isTouchPanning = true;
@@ -997,31 +1060,35 @@ export default function SequenceTool() {
             }
         };
 
+        let startPinchMidX = 0, startPinchMidY = 0;
+
         const onTouchMove = (e: TouchEvent) => {
             if (e.touches.length === 2 && startPinchDist !== null) {
                 e.preventDefault();
                 const d = getDist(e.touches);
                 const ratio = d / startPinchDist;
-                const newZoom = parseFloat(Math.min(4, Math.max(0.1, startZoomVal * ratio)).toFixed(3));
+                const newZoom = Math.min(4, Math.max(0.1, startZoomVal * ratio));
+                const zoomRatio = newZoom / startZoomVal;
+                const newPanX = startPinchMidX * (1 - zoomRatio) + startPinchPanX * zoomRatio;
+                const newPanY = startPinchMidY * (1 - zoomRatio) + startPinchPanY * zoomRatio;
                 zoomRef.current = newZoom;
-                panRef.current = { x: startPinchPanX, y: startPinchPanY };
-                setZoom(newZoom);
-                setPanX(startPinchPanX);
-                setPanY(startPinchPanY);
-                setFitActive(false);
+                panRef.current = { x: newPanX, y: newPanY };
+                applyTransform(panRef.current, zoomRef.current);
             } else if (e.touches.length === 1 && isTouchPanning) {
                 e.preventDefault();
-                const newPanX = startPanX + (e.touches[0].clientX - startTouchX);
-                const newPanY = startPanY + (e.touches[0].clientY - startTouchY);
-                panRef.current = { x: newPanX, y: newPanY };
-                setPanX(newPanX);
-                setPanY(newPanY);
+                panRef.current = {
+                    x: startPanX + (e.touches[0].clientX - startTouchX),
+                    y: startPanY + (e.touches[0].clientY - startTouchY),
+                };
+                applyTransform(panRef.current, zoomRef.current);
             }
         };
 
         const onTouchEnd = () => {
             startPinchDist = null;
             isTouchPanning = false;
+            syncTransformState();
+            setFitActive(false);
         };
 
         el.addEventListener("touchstart", onTouchStart, { passive: false });
@@ -1038,14 +1105,14 @@ export default function SequenceTool() {
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (!isDragging.current) return;
-            const newPanX = dragStartPan.current.x + (e.clientX - dragStartMouse.current.x);
-            const newPanY = dragStartPan.current.y + (e.clientY - dragStartMouse.current.y);
-            panRef.current = { x: newPanX, y: newPanY };
-            setPanX(newPanX);
-            setPanY(newPanY);
+            panRef.current = {
+                x: dragStartPan.current.x + (e.clientX - dragStartMouse.current.x),
+                y: dragStartPan.current.y + (e.clientY - dragStartMouse.current.y),
+            };
+            applyTransform(panRef.current, zoomRef.current);
         };
         const onUp = () => {
-            if (isDragging.current) { isDragging.current = false; setIsPanning(false); }
+            if (isDragging.current) { isDragging.current = false; setIsPanning(false); syncTransformState(); }
         };
         window.addEventListener("mousemove", onMove);
         window.addEventListener("mouseup", onUp);
@@ -1056,8 +1123,15 @@ export default function SequenceTool() {
     useEffect(() => {
         setMounted(true);
         setIsMobile(window.innerWidth < 768);
+        // Fetch LAN IP for QR code when on localhost
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            fetch("/api/lan-ip").then(r => r.json()).then(d => { if (d.ip) setLanIp(d.ip); }).catch(() => {});
+        }
+
         // URL ?data= takes priority over localStorage
-        const urlData = new URLSearchParams(window.location.search).get("data");
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("view") === "1") setViewMode(true);
+        const urlData = params.get("data");
         if (urlData) {
             const decoded = decodeData(urlData);
             if (decoded) { setCode(decoded); return; }
@@ -1129,11 +1203,9 @@ export default function SequenceTool() {
         const newZoom = parseFloat(Math.min((cw - 48) / svgDims.w, (ch - 48) / svgDims.h).toFixed(3));
         zoomRef.current = newZoom;
         panRef.current = { x: 0, y: 0 };
-        setZoom(newZoom);
-        setPanX(0);
-        setPanY(0);
-        setFitActive(true);
-    }, [svgDims]);
+        applyTransform(panRef.current, zoomRef.current);
+        setZoom(newZoom); setPanX(0); setPanY(0); setFitActive(true);
+    }, [svgDims, applyTransform]);
 
     useEffect(() => {
         if (svgDims && !hasFit) {
@@ -1148,6 +1220,28 @@ export default function SequenceTool() {
         const id = requestAnimationFrame(() => fitZoom());
         return () => cancelAnimationFrame(id);
     }, [showSettings, showCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Keep body background in sync with canvas colour ───────────────────
+    useEffect(() => {
+        const bg = (UI_THEMES[opts.theme] ?? UI_THEMES.light).canvasBg;
+        document.body.style.background = bg;
+        document.documentElement.style.background = bg;
+        return () => { document.body.style.background = ""; document.documentElement.style.background = ""; };
+    }, [opts.theme]);
+
+    // ── Re-fit on resize / orientation change ─────────────────────────────
+    useEffect(() => {
+        if (!mounted) return;
+        let tid: ReturnType<typeof setTimeout>;
+        const onResize = () => { clearTimeout(tid); tid = setTimeout(() => fitZoom(), 120); };
+        window.addEventListener("resize", onResize);
+        screen.orientation?.addEventListener("change", onResize);
+        return () => {
+            window.removeEventListener("resize", onResize);
+            screen.orientation?.removeEventListener("change", onResize);
+            clearTimeout(tid);
+        };
+    }, [mounted, fitZoom]);
 
     // ── Keyboard shortcuts (Figma-like) ───────────────────────────────────
     useEffect(() => {
@@ -1225,6 +1319,15 @@ export default function SequenceTool() {
         return `${window.location.origin}${window.location.pathname}?data=${encoded}`;
     }, [code]);
 
+    const buildViewUrl = useCallback(() => {
+        const encoded = encodeData(code);
+        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        const base = isLocal && lanIp
+            ? `http://${lanIp}:${window.location.port}`
+            : window.location.origin;
+        return `${base}${window.location.pathname}?data=${encoded}&view=1`;
+    }, [code, lanIp]);
+
     const copyLink = useCallback(() => {
         navigator.clipboard.writeText(buildShareUrl()).then(() => {
             setCopiedLink(true);
@@ -1271,6 +1374,83 @@ export default function SequenceTool() {
 
     const zoomPct = Math.round(zoom * 100);
     const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
+
+    // ── Presentation / view-only mode ─────────────────────────────────────
+    if (viewMode) {
+        const stepHeight = layout.stepHeight;
+        return (
+            <div
+                ref={canvasRef}
+                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: ut.canvasBg, fontFamily: "Inter, sans-serif", cursor: isPanning ? "grabbing" : "default", touchAction: "none" }}
+                onMouseMove={e => {
+                    const rect = canvasRef.current!.getBoundingClientRect();
+                    setHoverScreenY(e.clientY - rect.top);
+                }}
+                onMouseLeave={() => setHoverScreenY(null)}
+                onMouseDown={e => {
+                    isDragging.current = true; setIsPanning(true);
+                    dragStartMouse.current = { x: e.clientX, y: e.clientY };
+                    dragStartPan.current = { x: panRef.current.x, y: panRef.current.y };
+                    e.preventDefault();
+                }}
+                onWheel={e => {
+                    e.preventDefault();
+                    if (e.ctrlKey || e.metaKey) {
+                        const rect = canvasRef.current!.getBoundingClientRect();
+                        const ox = e.clientX - (rect.left + rect.width / 2);
+                        const oy = e.clientY - (rect.top + rect.height / 2);
+                        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                        const nz = Math.min(4, Math.max(0.2, zoomRef.current * delta));
+                        const ratio = nz / zoomRef.current;
+                        panRef.current = { x: ox * (1 - ratio) + panRef.current.x * ratio, y: oy * (1 - ratio) + panRef.current.y * ratio };
+                        zoomRef.current = nz; applyTransform(panRef.current, nz);
+                        setZoom(nz); setPanX(panRef.current.x); setPanY(panRef.current.y);
+                    } else {
+                        panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
+                        applyTransform(panRef.current, zoomRef.current);
+                        setPanX(panRef.current.x); setPanY(panRef.current.y);
+                    }
+                }}
+            >
+                {/* Hover row highlight */}
+                {hoverScreenY !== null && (
+                    <div style={{
+                        position: "absolute", left: 0, right: 0, pointerEvents: "none", zIndex: 5,
+                        top: Math.round(hoverScreenY / stepHeight) * stepHeight - stepHeight / 2,
+                        height: stepHeight,
+                        background: "rgba(120,220,232,0.07)",
+                        borderTop: "1px solid rgba(120,220,232,0.18)",
+                        borderBottom: "1px solid rgba(120,220,232,0.18)",
+                        transition: "top 0.12s ease",
+                    }} />
+                )}
+
+                {mounted && activeSvg && (
+                    <div ref={svgWrapRef} style={{
+                        position: "absolute", top: "50%", left: "50%",
+                        transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${zoom})`,
+                        transformOrigin: "center center", willChange: "transform",
+                    }}
+                        dangerouslySetInnerHTML={{ __html: activeSvg }}
+                    />
+                )}
+
+                {/* Minimal zoom bar */}
+                <div style={{
+                    position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
+                    background: ut.zoomBg, border: `1px solid ${ut.zoomBorder}`, borderRadius: 14,
+                    padding: "0 4px", display: "flex", alignItems: "center", gap: 0,
+                    boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 10,
+                }}>
+                    <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom - 0.15).toFixed(2)); zoomRef.current = nz; setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                    <span style={{ color: ut.zoomText, fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
+                    <button onClick={() => { const nz = parseFloat(Math.min(4, zoom + 0.15).toFixed(2)); zoomRef.current = nz; setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
+                    <button onClick={fitZoom} style={{ color: fitActive ? ut.accent : ut.zoomMuted, fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>Fit</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -1428,6 +1608,7 @@ export default function SequenceTool() {
                     >
                         {mounted && activeSvg ? (
                             <div
+                                ref={svgWrapRef}
                                 style={{
                                     position: "absolute",
                                     top: "50%", left: "50%",
@@ -1568,7 +1749,7 @@ export default function SequenceTool() {
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "20px 16px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
                         </div>
                     </div>
                 )}
@@ -1642,7 +1823,7 @@ export default function SequenceTool() {
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
                         </div>
                     </div>
                 </div>
