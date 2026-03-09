@@ -468,7 +468,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const tc = o.coloredText ? fp.color : th.plainTextFill;
         const pillTextFill = o.theme === "light" ? "#000000" : "#ffffff";
         if (fi === ti) {
-            const lowHeight = MG >= 30 && MG <= 40;
+            const lowHeight = MG >= 30 && MG <= 70;
             if (lowHeight) {
                 // Compact mode: skip arrow, render pill inline next to step number
                 const pillOffset = o.coloredNumbers ? fx + 14 : fx + 6;
