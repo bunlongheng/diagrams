@@ -736,12 +736,12 @@ function SettingsContent({
                     <div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
                             <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em" }}>Layout</div>
-                            <button onClick={() => upd({ autoLayout: !opts.autoLayout })} style={{
-                                padding: "3px 10px", borderRadius: 6, fontSize: fs(10), fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
-                                border: opts.autoLayout ? `1.5px solid ${ut.toggleOn}` : `1.5px solid ${ut.panelBorder}`,
-                                background: opts.autoLayout ? `${ut.toggleOn}22` : ut.overlayBtnBg,
-                                color: opts.autoLayout ? ut.toggleOn : ut.sectionLabel,
-                            }}>Auto</button>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }} onClick={() => upd({ autoLayout: !opts.autoLayout })}>
+                                <span style={{ fontSize: fs(10), fontWeight: 600, color: opts.autoLayout ? ut.toggleOn : ut.sectionLabel, transition: "color 0.15s" }}>Auto</span>
+                                <div style={{ position: "relative", width: 32, height: 18, borderRadius: 9, background: opts.autoLayout ? ut.toggleOn : ut.panelBorder, transition: "background 0.2s" }}>
+                                    <div style={{ position: "absolute", top: 2, left: opts.autoLayout ? 16 : 2, width: 14, height: 14, borderRadius: 7, background: "white", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} />
+                                </div>
+                            </div>
                         </div>
                         {!opts.autoLayout && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} ut={ut} onChange={v => updL({ stepHeight: v })} />
