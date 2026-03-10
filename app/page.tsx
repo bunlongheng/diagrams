@@ -1017,6 +1017,7 @@ export default function SequenceTool() {
     const dragStartPan = useRef({ x: 0, y: 0 });
     const zoomRef = useRef(1.0);
     const panRef = useRef({ x: 0, y: 0 });
+    const svgDimsRef = useRef<{ w: number; h: number } | null>(null);
     const spaceHeld = useRef(false);
 
     // ── Title inline edit ─────────────────────────────────────────────────
@@ -1031,8 +1032,15 @@ export default function SequenceTool() {
 
     // Apply transform directly to DOM — bypasses React render cycle for smooth gestures
     const applyTransform = useCallback((p: { x: number; y: number }, z: number) => {
-        if (svgWrapRef.current) {
-            svgWrapRef.current.style.transform = `translate(calc(-50% + ${p.x}px), calc(-50% + ${p.y}px)) scale(${z})`;
+        if (!svgWrapRef.current) return;
+        svgWrapRef.current.style.transform = `translate(calc(-50% + ${p.x}px), calc(-50% + ${p.y}px))`;
+        const dims = svgDimsRef.current;
+        if (dims) {
+            const svgEl = svgWrapRef.current.querySelector("svg");
+            if (svgEl) {
+                svgEl.setAttribute("width",  String(Math.round(dims.w * z)));
+                svgEl.setAttribute("height", String(Math.round(dims.h * z)));
+            }
         }
     }, []);
 
@@ -1046,6 +1054,7 @@ export default function SequenceTool() {
     // Keep refs in sync for use in event handlers
     useEffect(() => { zoomRef.current = zoom; }, [zoom]);
     useEffect(() => { panRef.current = { x: panX, y: panY }; }, [panX, panY]);
+    useEffect(() => { svgDimsRef.current = svgDims; }, [svgDims]);
 
     // ── Resize drag (desktop) ───────────────────────────────────────────────
     useEffect(() => {
@@ -1540,8 +1549,7 @@ export default function SequenceTool() {
                 {mounted && activeSvg && (
                     <div ref={svgWrapRef} style={{
                         position: "absolute", top: "50%", left: "50%",
-                        transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${zoom})`,
-                        transformOrigin: "center center", willChange: "transform",
+                        transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`,
                     }}
                         onClick={e => {
                             const el = (e.target as Element).closest("#diagram-title");
@@ -1728,9 +1736,7 @@ export default function SequenceTool() {
                                 style={{
                                     position: "absolute",
                                     top: "50%", left: "50%",
-                                    transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${zoom})`,
-                                    transformOrigin: "center center",
-                                    willChange: "transform",
+                                    transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`,
                                 }}
                                 onClick={e => {
                                     const el = (e.target as Element).closest("#diagram-title");
