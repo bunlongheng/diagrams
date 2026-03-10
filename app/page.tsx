@@ -1054,6 +1054,9 @@ export default function SequenceTool() {
     // Keep refs in sync for use in event handlers
     useEffect(() => { zoomRef.current = zoom; }, [zoom]);
     useEffect(() => { panRef.current = { x: panX, y: panY }; }, [panX, panY]);
+    // Re-apply SVG dimensions on every zoom change — covers toolbar buttons, keyboard shortcuts,
+    // preset zoom buttons, and any other path that calls setZoom without calling applyTransform
+    useEffect(() => { applyTransform(panRef.current, zoom); }, [zoom, applyTransform]);
 
     // ── Resize drag (desktop) ───────────────────────────────────────────────
     useEffect(() => {
@@ -1315,6 +1318,12 @@ export default function SequenceTool() {
     }, [activeSvg]);
     // Sync ref during render — avoids SWC/Linux minifier TDZ bug triggered by useEffect([svgDims])
     svgDimsRef.current = svgDims;
+    // Re-apply transform after any SVG content change (title edit, theme change, code edit)
+    // so the diagram stays at the current zoom level instead of snapping back to 100%
+    useEffect(() => {
+        if (!activeSvg) return;
+        applyTransform(panRef.current, zoomRef.current);
+    }, [activeSvg, applyTransform]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fitZoom = useCallback(() => {
         if (!canvasRef.current || !svgDims) return;
@@ -1714,7 +1723,7 @@ export default function SequenceTool() {
                             e.preventDefault();
                         }}
                         onDoubleClick={e => {
-                            if ((e.target as HTMLElement).closest("button")) return;
+                            if ((e.target as HTMLElement).closest("button,#diagram-title")) return;
                             if (Math.abs(zoomRef.current - 1.0) > 0.05) {
                                 // zoom to 100% centered on cursor
                                 const rect = canvasRef.current!.getBoundingClientRect();
