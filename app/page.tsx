@@ -634,14 +634,14 @@ function decodeData(s: string): string {
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl,
+    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl, onPresent,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
     mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void;
-    copyCode: () => void; copyLink: () => void; share: () => void;
+    copyCode: () => void; copyLink: () => void; share: () => void; onPresent: () => void;
 }) {
     const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
     const [tab, setTab] = useState<"general" | "components" | "share">("general");
@@ -775,10 +775,11 @@ function SettingsContent({
                     <p style={{ fontSize: fs(10), color: ut.sectionLabel, textAlign: "center", margin: 0, lineHeight: 1.5 }}>
                         Scan to open read-only canvas
                     </p>
-                    <a href={viewUrl} target="_blank" rel="noreferrer"
-                        style={{ fontSize: fs(11), color: ut.accent, fontWeight: 600, textDecoration: "none", wordBreak: "break-all", textAlign: "center" }}>
-                        Open view →
-                    </a>
+                    <button onClick={onPresent}
+                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: ut.accent, color: "#221F22", cursor: "pointer", padding: mobile ? "10px 28px" : "8px 24px", fontSize: fs(12), border: "none" }}>
+                        ▶ Present
+                    </button>
                 </div>}
 
                 <div style={{ height: 1, background: ut.divider }} />
@@ -1526,6 +1527,49 @@ export default function SequenceTool() {
     const zoomPct = Math.round(zoom * 100);
     const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
 
+    // ── Presenter mode ────────────────────────────────────────────────────
+    const presenterSelectedEl = useRef<SVGElement | null>(null);
+
+    const enterPresenter = useCallback(() => {
+        setViewMode(true);
+        document.documentElement.requestFullscreen?.().catch(() => {});
+    }, []);
+
+    const exitPresenter = useCallback(() => {
+        if (presenterSelectedEl.current) {
+            presenterSelectedEl.current.style.filter = "";
+            presenterSelectedEl.current.style.stroke = "";
+            presenterSelectedEl.current = null;
+        }
+        setViewMode(false);
+        if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (!viewMode) return;
+        const handler = (e: KeyboardEvent) => { if (e.key === "Escape") exitPresenter(); };
+        document.addEventListener("keydown", handler, true);
+        return () => document.removeEventListener("keydown", handler, true);
+    }, [viewMode, exitPresenter]);
+
+    const handlePresenterClick = useCallback((e: React.MouseEvent) => {
+        const target = e.target as SVGElement;
+        // Clear previous highlight
+        if (presenterSelectedEl.current) {
+            presenterSelectedEl.current.style.filter = "";
+            presenterSelectedEl.current.style.opacity = "";
+            presenterSelectedEl.current = null;
+        }
+        // Skip if click is on the SVG background rect (first child of svg)
+        const svg = svgWrapRef.current?.querySelector("svg");
+        if (!svg || target === svg || target === svg.firstElementChild) return;
+        // Find nearest highlightable element
+        const el = target.closest("rect, line, polyline, polygon, path, circle, text") as SVGElement | null;
+        if (!el || el === svg.firstElementChild) return;
+        presenterSelectedEl.current = el;
+        el.style.filter = "drop-shadow(0 0 8px #FFD866) drop-shadow(0 0 20px rgba(255,216,102,0.7))";
+    }, []);
+
     // ── Presentation / view-only mode ─────────────────────────────────────
     if (viewMode) {
         const stepHeight = layout.stepHeight;
@@ -1579,16 +1623,29 @@ export default function SequenceTool() {
                 )}
 
                 {mounted && activeSvg && (
-                    <div ref={svgWrapRef} style={{
-                        position: "absolute", top: "50%", left: "50%",
-                    }}
-                        onClick={e => {
-                            const el = (e.target as Element).closest("#diagram-title");
-                            if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); }
-                        }}
+                    <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default" }}
+                        onClick={handlePresenterClick}
                         dangerouslySetInnerHTML={{ __html: activeSvg }}
                     />
                 )}
+
+                {/* Exit presenter button — top right */}
+                <button
+                    onClick={exitPresenter}
+                    title="Exit presenter (Esc)"
+                    style={{
+                        position: "absolute", top: 20, right: 20, zIndex: 20,
+                        background: "rgba(30,30,40,0.7)", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 10, color: "#94a3b8", fontSize: 13, fontWeight: 600,
+                        cursor: "pointer", padding: "6px 14px", backdropFilter: "blur(8px)",
+                        display: "flex", alignItems: "center", gap: 6, letterSpacing: "0.02em",
+                        opacity: 0, transition: "opacity 0.2s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = "0")}
+                >
+                    ✕ Exit
+                </button>
 
                 {/* Minimal zoom bar */}
                 <div style={{
@@ -1920,7 +1977,7 @@ export default function SequenceTool() {
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "12px 12px" }}>
                             <SettingsContent opts={opts} layout={computedLayout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} onPresent={enterPresenter} />
                         </div>
                     </div>
                 )}
@@ -1994,7 +2051,7 @@ export default function SequenceTool() {
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} onPresent={enterPresenter} />
                         </div>
                     </div>
                 </div>
