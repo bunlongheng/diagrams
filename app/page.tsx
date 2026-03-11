@@ -1742,7 +1742,7 @@ export default function SequenceTool() {
                         const ox = e.clientX - (rect.left + rect.width / 2);
                         const oy = e.clientY - (rect.top + rect.height / 2);
                         // 10x smoother: speed-based instead of fixed multiplier
-                        const speed = e.deltaMode === 1 ? 0.006 : 0.0004;
+                        const speed = e.deltaMode === 1 ? 0.018 : 0.0012;
                         const oldZoom = zoomRef.current;
                         const newZoom = parseFloat(Math.min(4, Math.max(0.2, oldZoom - e.deltaY * speed * oldZoom)).toFixed(4));
                         const ratio = newZoom / oldZoom;
