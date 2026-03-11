@@ -1020,6 +1020,7 @@ export default function SequenceTool() {
     const panRef = useRef({ x: 0, y: 0 });
     const svgDimsRef = useRef<{ w: number; h: number } | null>(null);
     const spaceHeld = useRef(false);
+    const viewWheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── Title inline edit ─────────────────────────────────────────────────
     const commitTitle = useCallback((val: string) => {
@@ -1075,10 +1076,11 @@ export default function SequenceTool() {
         if (!mounted) return;
         const el = canvasRef.current;
         if (!el) return;
+        let wheelEndTimer: ReturnType<typeof setTimeout>;
         const onWheel = (e: WheelEvent) => {
             e.preventDefault();
             if (e.ctrlKey || e.metaKey) {
-                // Zoom toward cursor
+                // Zoom toward cursor — refs + DOM only, no setState
                 const rect = el.getBoundingClientRect();
                 const dx = e.clientX - (rect.left + rect.width / 2);
                 const dy = e.clientY - (rect.top + rect.height / 2);
@@ -1086,21 +1088,20 @@ export default function SequenceTool() {
                 const oldZoom = zoomRef.current;
                 const newZoom = parseFloat(Math.min(4, Math.max(0.1, oldZoom - e.deltaY * speed)).toFixed(3));
                 const ratio = newZoom / oldZoom;
-                const newPanX = dx * (1 - ratio) + panRef.current.x * ratio;
-                const newPanY = dy * (1 - ratio) + panRef.current.y * ratio;
                 zoomRef.current = newZoom;
-                panRef.current = { x: newPanX, y: newPanY };
+                panRef.current = { x: dx * (1 - ratio) + panRef.current.x * ratio, y: dy * (1 - ratio) + panRef.current.y * ratio };
                 applyTransform(panRef.current, zoomRef.current);
-                setZoom(newZoom); setPanX(newPanX); setPanY(newPanY); setFitActive(false);
             } else {
-                // Pan (two-finger scroll, no modifier)
+                // Pan — refs + DOM only, no setState
                 panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
                 applyTransform(panRef.current, zoomRef.current);
-                setPanX(panRef.current.x); setPanY(panRef.current.y);
             }
+            // Sync React state only when wheel gesture ends
+            clearTimeout(wheelEndTimer);
+            wheelEndTimer = setTimeout(() => { syncTransformState(); setFitActive(false); }, 150);
         };
         el.addEventListener("wheel", onWheel, { passive: false });
-        return () => el.removeEventListener("wheel", onWheel);
+        return () => { el.removeEventListener("wheel", onWheel); clearTimeout(wheelEndTimer); };
     }, [mounted]);
 
     // ── Touch: pinch-zoom + pan ───────────────────────────────────────────
@@ -1525,14 +1526,15 @@ export default function SequenceTool() {
                         const delta = e.deltaY > 0 ? 0.9 : 1.1;
                         const nz = Math.min(4, Math.max(0.2, zoomRef.current * delta));
                         const ratio = nz / zoomRef.current;
+                        zoomRef.current = nz;
                         panRef.current = { x: ox * (1 - ratio) + panRef.current.x * ratio, y: oy * (1 - ratio) + panRef.current.y * ratio };
-                        zoomRef.current = nz; applyTransform(panRef.current, nz);
-                        setZoom(nz); setPanX(panRef.current.x); setPanY(panRef.current.y);
+                        applyTransform(panRef.current, nz);
                     } else {
                         panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
                         applyTransform(panRef.current, zoomRef.current);
-                        setPanX(panRef.current.x); setPanY(panRef.current.y);
                     }
+                    if (viewWheelTimer.current) clearTimeout(viewWheelTimer.current);
+                    viewWheelTimer.current = setTimeout(() => { syncTransformState(); setFitActive(false); }, 150);
                 }}
             >
                 {/* Hover row highlight */}
