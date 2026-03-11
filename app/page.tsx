@@ -1623,6 +1623,9 @@ export default function SequenceTool() {
 
     // ── Presenter mode ────────────────────────────────────────────────────
     const presenterSelectedEl = useRef<SVGElement | null>(null);
+    const spotlightRef = useRef<HTMLDivElement | null>(null);
+    const spotlightActiveRef = useRef(false);
+    const [spotlightActive, setSpotlightActive] = useState(false);
 
     const enterPresenter = useCallback(() => {
         setViewMode(true);
@@ -1639,9 +1642,30 @@ export default function SequenceTool() {
         if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     }, []);
 
+    const presenterEscRef = useRef(false);
+    const presenterEscTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [presenterEscPending, setPresenterEscPending] = useState(false);
+
     useEffect(() => {
         if (!viewMode) return;
-        const handler = (e: KeyboardEvent) => { if (e.key === "Escape") exitPresenter(); };
+        const handler = (e: KeyboardEvent) => {
+            if (e.key !== "Escape") return;
+            if (presenterEscRef.current) {
+                // Second Esc — exit
+                presenterEscRef.current = false;
+                setPresenterEscPending(false);
+                if (presenterEscTimerRef.current) clearTimeout(presenterEscTimerRef.current);
+                exitPresenter();
+            } else {
+                // First Esc — warn
+                presenterEscRef.current = true;
+                setPresenterEscPending(true);
+                presenterEscTimerRef.current = setTimeout(() => {
+                    presenterEscRef.current = false;
+                    setPresenterEscPending(false);
+                }, 2000);
+            }
+        };
         document.addEventListener("keydown", handler, true);
         return () => document.removeEventListener("keydown", handler, true);
     }, [viewMode, exitPresenter]);
@@ -1670,18 +1694,46 @@ export default function SequenceTool() {
         return (
             <div
                 ref={canvasRef}
-                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: ut.canvasBg, fontFamily: "Inter, sans-serif", cursor: isPanning ? "grabbing" : "default", touchAction: "none" }}
+                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: ut.canvasBg, fontFamily: "Inter, sans-serif", cursor: spotlightActive ? "crosshair" : "default", touchAction: "none", userSelect: "none" }}
                 onMouseMove={e => {
                     const rect = canvasRef.current!.getBoundingClientRect();
                     setHoverScreenY(e.clientY - rect.top);
+                    // Spotlight: update gradient center directly — no React re-render
+                    if (spotlightActiveRef.current && spotlightRef.current) {
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        spotlightRef.current.style.background = `radial-gradient(circle 200px at ${x}px ${y}px, transparent 0%, transparent 160px, rgba(0,0,0,0.65) 220px)`;
+                    }
                 }}
-                onMouseLeave={() => setHoverScreenY(null)}
+                onMouseLeave={() => {
+                    setHoverScreenY(null);
+                    if (spotlightActiveRef.current) { spotlightActiveRef.current = false; setSpotlightActive(false); }
+                }}
                 onMouseDown={e => {
-                    if ((e.target as HTMLElement).closest("#diagram-title")) return;
-                    isDragging.current = true; setIsPanning(true);
-                    dragStartMouse.current = { x: e.clientX, y: e.clientY };
-                    dragStartPan.current = { x: panRef.current.x, y: panRef.current.y };
+                    if (e.button !== 0) return;
                     e.preventDefault();
+                    // Left-click hold → spotlight mode
+                    spotlightActiveRef.current = true;
+                    setSpotlightActive(true);
+                    if (spotlightRef.current) {
+                        const rect = canvasRef.current!.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        spotlightRef.current.style.background = `radial-gradient(circle 200px at ${x}px ${y}px, transparent 0%, transparent 160px, rgba(0,0,0,0.65) 220px)`;
+                        spotlightRef.current.style.opacity = "1";
+                    }
+                }}
+                onMouseUp={e => {
+                    if (e.button !== 0) return;
+                    if (spotlightActiveRef.current) {
+                        spotlightActiveRef.current = false;
+                        setSpotlightActive(false);
+                        if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
+                        return; // don't fire click highlight when releasing spotlight
+                    }
+                }}
+                onClick={e => {
+                    if (!spotlightActiveRef.current) handlePresenterClick(e);
                 }}
                 onWheel={e => {
                     e.preventDefault();
@@ -1689,12 +1741,14 @@ export default function SequenceTool() {
                         const rect = canvasRef.current!.getBoundingClientRect();
                         const ox = e.clientX - (rect.left + rect.width / 2);
                         const oy = e.clientY - (rect.top + rect.height / 2);
-                        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                        const nz = Math.min(4, Math.max(0.2, zoomRef.current * delta));
-                        const ratio = nz / zoomRef.current;
-                        zoomRef.current = nz;
+                        // 10x smoother: speed-based instead of fixed multiplier
+                        const speed = e.deltaMode === 1 ? 0.006 : 0.0004;
+                        const oldZoom = zoomRef.current;
+                        const newZoom = parseFloat(Math.min(4, Math.max(0.2, oldZoom - e.deltaY * speed * oldZoom)).toFixed(4));
+                        const ratio = newZoom / oldZoom;
+                        zoomRef.current = newZoom;
                         panRef.current = { x: ox * (1 - ratio) + panRef.current.x * ratio, y: oy * (1 - ratio) + panRef.current.y * ratio };
-                        applyTransform(panRef.current, nz);
+                        applyTransform(panRef.current, newZoom);
                     } else {
                         panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
                         applyTransform(panRef.current, zoomRef.current);
@@ -1704,7 +1758,7 @@ export default function SequenceTool() {
                 }}
             >
                 {/* Hover row highlight */}
-                {hoverScreenY !== null && (
+                {hoverScreenY !== null && !spotlightActive && (
                     <div style={{
                         position: "absolute", left: 0, right: 0, pointerEvents: "none", zIndex: 5,
                         top: Math.round(hoverScreenY / stepHeight) * stepHeight - stepHeight / 2,
@@ -1718,41 +1772,44 @@ export default function SequenceTool() {
 
                 {mounted && activeSvg && (
                     <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default" }}
-                        onClick={handlePresenterClick}
                         dangerouslySetInnerHTML={{ __html: activeSvg }}
                     />
                 )}
 
-                {/* Exit presenter button — top right */}
-                <button
-                    onClick={exitPresenter}
-                    title="Exit presenter (Esc)"
-                    style={{
-                        position: "absolute", top: 20, right: 20, zIndex: 20,
-                        background: "rgba(30,30,40,0.7)", border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 10, color: "#94a3b8", fontSize: 13, fontWeight: 600,
-                        cursor: "pointer", padding: "6px 14px", backdropFilter: "blur(8px)",
-                        display: "flex", alignItems: "center", gap: 6, letterSpacing: "0.02em",
-                        opacity: 0, transition: "opacity 0.2s",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = "0")}
-                >
-                    ✕ Exit
-                </button>
+                {/* Spotlight overlay — updated directly via DOM, no React re-renders */}
+                <div ref={spotlightRef} style={{
+                    position: "absolute", inset: 0, zIndex: 16, pointerEvents: "none",
+                    opacity: 0, transition: "opacity 0.15s ease",
+                    background: "radial-gradient(circle 200px at 50% 50%, transparent 0%, transparent 160px, rgba(0,0,0,0.65) 220px)",
+                }} />
+
+                {/* Esc-pending toast */}
+                {presenterEscPending && (
+                    <div style={{
+                        position: "absolute", top: 24, left: "50%", transform: "translateX(-50%)",
+                        background: "rgba(20,20,30,0.88)", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 12, color: "#f8fafc", fontSize: 13, fontWeight: 600,
+                        padding: "8px 20px", zIndex: 30, backdropFilter: "blur(8px)",
+                        pointerEvents: "none", letterSpacing: "0.02em",
+                    }}>
+                        Press Esc again to exit presenter
+                    </div>
+                )}
 
                 {/* Minimal zoom bar */}
                 <div style={{
                     position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
                     background: ut.zoomBg, border: `1px solid ${ut.zoomBorder}`, borderRadius: 14,
                     padding: "0 4px", display: "flex", alignItems: "center", gap: 0,
-                    boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 10,
+                    boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 20,
                 }}>
                     <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom - 0.15).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
                     <span style={{ color: ut.zoomText, fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
                     <button onClick={() => { const nz = parseFloat(Math.min(4, zoom + 0.15).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                     <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
                     <button onClick={fitZoom} style={{ color: fitActive ? ut.accent : ut.zoomMuted, fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>Fit</button>
+                    <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
+                    <button onClick={exitPresenter} style={{ color: "#f43f5e", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>✕ Exit</button>
                 </div>
             </div>
         );
