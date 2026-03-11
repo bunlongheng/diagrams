@@ -1465,10 +1465,23 @@ export default function SequenceTool() {
     }, [code, lanIp]);
 
     const copyLink = useCallback(() => {
-        navigator.clipboard.writeText(buildShareUrl()).then(() => {
-            setCopiedLink(true);
-            setTimeout(() => setCopiedLink(false), 1500);
-        });
+        const url = buildShareUrl();
+        const confirm = () => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 1500); };
+        const fallback = () => {
+            try {
+                const ta = document.createElement("textarea");
+                ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+                document.body.appendChild(ta); ta.focus(); ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                confirm();
+            } catch { /* ignore */ }
+        };
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(confirm).catch(fallback);
+        } else {
+            fallback();
+        }
     }, [buildShareUrl]);
 
     const share = useCallback(() => {
