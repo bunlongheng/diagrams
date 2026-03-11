@@ -1331,8 +1331,9 @@ export default function SequenceTool() {
         if (urlData) {
             const decoded = decodeData(urlData);
             if (decoded) {
+                // Save directly to localStorage before stripping the URL so refresh works
+                localStorage.setItem("nsd-code", decoded);
                 setCode(decoded);
-                // Strip ?data= from URL so refreshes load from localStorage cleanly
                 const cleanUrl = params.get("view") === "1"
                     ? `${window.location.pathname}?view=1`
                     : window.location.pathname;
