@@ -1322,11 +1322,10 @@ export default function SequenceTool() {
         }
 
         // URL ?data= takes priority over localStorage for code, but always load opts/layout
-        const rawSearch = window.location.search;
-        const params = new URLSearchParams(rawSearch);
+        const params = new URLSearchParams(window.location.search);
         if (params.get("view") === "1") setViewMode(true);
-        // Use raw search to avoid URLSearchParams converting + → space in LZString data
-        const urlData = rawSearch.match(/[?&]data=([^&]+)/)?.[1] ?? null;
+        // URLSearchParams.get() percent-decodes %2B → + correctly (encodeData now uses encodeURIComponent)
+        const urlData = params.get("data");
         try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
         try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
         if (urlData) {
@@ -1557,12 +1556,12 @@ export default function SequenceTool() {
     }, [code]);
 
     const buildShareUrl = useCallback(() => {
-        const encoded = encodeData(code);
+        const encoded = encodeURIComponent(encodeData(code));
         return `${window.location.origin}${window.location.pathname}?data=${encoded}`;
     }, [code]);
 
     const buildViewUrl = useCallback(() => {
-        const encoded = encodeData(code);
+        const encoded = encodeURIComponent(encodeData(code));
         const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
         const base = isLocal && lanIp
             ? `http://${lanIp}:${window.location.port}`
