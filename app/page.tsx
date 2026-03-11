@@ -129,9 +129,24 @@ const MERMAID_TYPES: Record<string, string> = {
     "c4context":     "c4",
 };
 
+function stripFrontmatter(code: string): string {
+    const lines = code.trim().split("\n");
+    if (lines[0]?.trim() !== "---") return code;
+    const end = lines.findIndex((l, i) => i > 0 && l.trim() === "---");
+    if (end === -1) return code;
+    return lines.slice(end + 1).join("\n").trimStart();
+}
+
 function detectDiagramType(code: string): string {
-    const first = code.trim().split("\n")[0].trim().toLowerCase().replace(/\s+.*$/, "");
-    return MERMAID_TYPES[first] ?? "sequence";
+    const stripped = stripFrontmatter(code);
+    // Find first non-empty, non-comment, non-title line
+    for (const raw of stripped.split("\n")) {
+        const line = raw.trim();
+        if (!line || line.startsWith("%%") || /^title\s*:/i.test(line) || /^accTitle\s*:/i.test(line) || /^accDescr\s*:/i.test(line)) continue;
+        const key = line.toLowerCase().replace(/\s+.*$/, "");
+        return MERMAID_TYPES[key] ?? "sequence";
+    }
+    return "sequence";
 }
 
 // ── Colorful post-processor for mermaid SVG ───────────────────────────────────
@@ -1276,7 +1291,7 @@ export default function SequenceTool() {
                 },
                 securityLevel: "loose",
             });
-            mermaid.render("mermaid-svg-" + Date.now(), code).then(({ svg: renderedSvg }) => {
+            mermaid.render("mermaid-svg-" + Date.now(), stripFrontmatter(code)).then(({ svg: renderedSvg }) => {
                 if (!cancelled) setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType));
             }).catch(() => {
                 if (!cancelled) setMermaidSvg("");
