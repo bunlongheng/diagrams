@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Code2, PlayCircle, SlidersHorizontal, X } from "lucide-react";
+import { Code2, SlidersHorizontal, X } from "lucide-react";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
 import { QRCodeSVG } from "qrcode.react";
@@ -1886,7 +1886,7 @@ export default function SequenceTool() {
                         <SlidersHorizontal size={20} strokeWidth={2} />
                     </IconBtn>
                     <IconBtn active={false} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={enterPresenter} title="Present">
-                        <PlayCircle size={20} strokeWidth={2} />
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="10"/><polygon points="8,6 15,10 8,14" fill="#221F22"/></svg>
                     </IconBtn>
                 </div>
             </header>
