@@ -765,7 +765,12 @@ function SettingsContent({
                 {/* QR code → read-only view */}
                 {viewUrl && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                     <div style={{ background: "#ffffff", borderRadius: 12, padding: 10, display: "inline-flex" }}>
-                        <QRCodeSVG value={viewUrl} size={160} bgColor="#ffffff" fgColor="#1e293b" level="M" />
+                        {viewUrl.length > 2000
+                            ? <div style={{ width: 160, height: 160, borderRadius: 8, background: "repeating-linear-gradient(45deg,#e2e8f0 0,#e2e8f0 4px,#f8fafc 4px,#f8fafc 12px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <span style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "0 12px", lineHeight: 1.4 }}>Diagram too large for QR</span>
+                              </div>
+                            : <QRCodeSVG value={viewUrl} size={160} bgColor="#ffffff" fgColor="#1e293b" level="M" />
+                        }
                     </div>
                     <p style={{ fontSize: fs(10), color: ut.sectionLabel, textAlign: "center", margin: 0, lineHeight: 1.5 }}>
                         Scan to open read-only canvas
@@ -1325,7 +1330,8 @@ export default function SequenceTool() {
         const vb = activeSvg.match(/viewBox="[^"]*0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
         return vb ? { w: parseFloat(vb[1]), h: parseFloat(vb[2]) } : null;
     }, [activeSvg]);
-    useEffect(() => { svgDimsRef.current = svgDims; }, [svgDims]);
+    // Inline sync avoids SWC/Linux minifier TDZ bug (useEffect([svgDims]) gets hoisted before declaration)
+    svgDimsRef.current = svgDims;
 
     const fitZoom = useCallback(() => {
         if (!canvasRef.current || !svgDims) return;
