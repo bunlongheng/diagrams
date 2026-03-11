@@ -706,7 +706,7 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
     return (
         <button
             onClick={onClick}
-            className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:brightness-125"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:brightness-125"
             style={{ background: active ? accent : inactiveBg, color: active ? "white" : color }}
         >{children}</button>
     );
@@ -1880,13 +1880,13 @@ export default function SequenceTool() {
                 <div className="flex-1" />
                 <div className="flex gap-2">
 <IconBtn active={showCode} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
-                        <Code2 size={20} strokeWidth={2} />
+                        <Code2 size={16} strokeWidth={2} />
                     </IconBtn>
                     <IconBtn active={showSettings} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
-                        <SlidersHorizontal size={20} strokeWidth={2} />
+                        <SlidersHorizontal size={16} strokeWidth={2} />
                     </IconBtn>
                     <IconBtn active={false} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={enterPresenter} title="Present">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="10"/><polygon points="8,6 15,10 8,14" fill="#221F22"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="10"/><polygon points="8,6 15,10 8,14" fill="#221F22"/></svg>
                     </IconBtn>
                 </div>
             </header>
