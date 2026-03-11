@@ -717,9 +717,11 @@ function encodeData(s: string): string {
     try { return LZString.compressToEncodedURIComponent(s); } catch { return ""; }
 }
 function decodeData(s: string): string {
-    // Try LZ-String first, fall back to legacy base64 for old URLs
+    // Normalize: percent-decode %2B/%2F etc, then replace any spaces with + (handles old raw-+ URLs and form-encoded URLs)
+    let normalized = s;
+    try { normalized = decodeURIComponent(s).replace(/ /g, "+"); } catch { normalized = s.replace(/ /g, "+"); }
     try {
-        const lz = LZString.decompressFromEncodedURIComponent(s);
+        const lz = LZString.decompressFromEncodedURIComponent(normalized);
         if (lz) return lz;
     } catch {}
     try { return decodeURIComponent(atob(s).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")); } catch { return ""; }
@@ -1322,10 +1324,12 @@ export default function SequenceTool() {
         }
 
         // URL ?data= takes priority over localStorage for code, but always load opts/layout
-        const params = new URLSearchParams(window.location.search);
+        const rawSearch = window.location.search;
+        const params = new URLSearchParams(rawSearch);
         if (params.get("view") === "1") setViewMode(true);
-        // URLSearchParams.get() percent-decodes %2B → + correctly (encodeData now uses encodeURIComponent)
-        const urlData = params.get("data");
+        // Use raw regex so + is preserved as-is (not converted to space by URLSearchParams)
+        // decodeData handles both raw-+ (old URLs) and %2B (new URLs)
+        const urlData = rawSearch.match(/[?&]data=([^&]*)/)?.[1] ?? null;
         try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
         try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
         if (urlData) {
@@ -1380,7 +1384,8 @@ export default function SequenceTool() {
             });
             mermaid.render("mermaid-svg-" + Date.now(), stripFrontmatter(code)).then(({ svg: renderedSvg }) => {
                 if (!cancelled) setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType));
-            }).catch(() => {
+            }).catch((err) => {
+                console.error("[mermaid render error]", err);
                 if (!cancelled) setMermaidSvg("");
             });
         });
