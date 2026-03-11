@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Code2, SlidersHorizontal, X } from "lucide-react";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
@@ -1057,6 +1057,10 @@ export default function SequenceTool() {
     useEffect(() => { zoomRef.current = zoom; }, [zoom]);
     useEffect(() => { panRef.current = { x: panX, y: panY }; }, [panX, panY]);
     fitActiveRef.current = fitActive;
+    // Re-apply transform after every render — prevents React from overwriting
+    // the direct DOM transform set by applyTransform during gestures.
+    // useLayoutEffect runs synchronously before paint so there is zero flicker.
+    useLayoutEffect(() => { if (svgWrapRef.current) applyTransform(panRef.current, zoomRef.current); });
 
     // ── Resize drag (desktop) ───────────────────────────────────────────────
     useEffect(() => {
@@ -1076,11 +1080,10 @@ export default function SequenceTool() {
         if (!mounted) return;
         const el = canvasRef.current;
         if (!el) return;
-        let wheelEndTimer: ReturnType<typeof setTimeout>;
         const onWheel = (e: WheelEvent) => {
             e.preventDefault();
             if (e.ctrlKey || e.metaKey) {
-                // Zoom toward cursor — refs + DOM only, no setState
+                // Zoom toward cursor
                 const rect = el.getBoundingClientRect();
                 const dx = e.clientX - (rect.left + rect.width / 2);
                 const dy = e.clientY - (rect.top + rect.height / 2);
@@ -1091,17 +1094,16 @@ export default function SequenceTool() {
                 zoomRef.current = newZoom;
                 panRef.current = { x: dx * (1 - ratio) + panRef.current.x * ratio, y: dy * (1 - ratio) + panRef.current.y * ratio };
                 applyTransform(panRef.current, zoomRef.current);
+                setZoom(newZoom); setPanX(panRef.current.x); setPanY(panRef.current.y); setFitActive(false);
             } else {
-                // Pan — refs + DOM only, no setState
+                // Pan
                 panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
                 applyTransform(panRef.current, zoomRef.current);
+                setPanX(panRef.current.x); setPanY(panRef.current.y);
             }
-            // Sync React state only when wheel gesture ends
-            clearTimeout(wheelEndTimer);
-            wheelEndTimer = setTimeout(() => { syncTransformState(); setFitActive(false); }, 150);
         };
         el.addEventListener("wheel", onWheel, { passive: false });
-        return () => { el.removeEventListener("wheel", onWheel); clearTimeout(wheelEndTimer); };
+        return () => el.removeEventListener("wheel", onWheel);
     }, [mounted]);
 
     // ── Touch: pinch-zoom + pan ───────────────────────────────────────────
@@ -1553,7 +1555,6 @@ export default function SequenceTool() {
                 {mounted && activeSvg && (
                     <div ref={svgWrapRef} style={{
                         position: "absolute", top: "50%", left: "50%",
-                        transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`,
                     }}
                         onClick={e => {
                             const el = (e.target as Element).closest("#diagram-title");
@@ -1726,7 +1727,6 @@ export default function SequenceTool() {
                                 style={{
                                     position: "absolute",
                                     top: "50%", left: "50%",
-                                    transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`,
                                 }}
                                 onClick={e => {
                                     const el = (e.target as Element).closest("#diagram-title");
