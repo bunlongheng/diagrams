@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Code2, SlidersHorizontal, X } from "lucide-react";
+import { Code2, PlayCircle, SlidersHorizontal, X } from "lucide-react";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
 import { QRCodeSVG } from "qrcode.react";
@@ -1323,21 +1323,20 @@ export default function SequenceTool() {
             fetch("/api/lan-ip").then(r => r.json()).then(d => { if (d.ip) setLanIp(d.ip); }).catch(() => {});
         }
 
-        // URL ?data= takes priority over localStorage
-        // NOTE: URLSearchParams converts + → space (application/x-www-form-urlencoded),
-        // which corrupts LZString payloads that contain literal +. Parse raw query instead.
+        // URL ?data= takes priority over localStorage for code, but always load opts/layout
         const rawSearch = window.location.search;
         const params = new URLSearchParams(rawSearch);
         if (params.get("view") === "1") setViewMode(true);
+        // Use raw search to avoid URLSearchParams converting + → space in LZString data
         const urlData = rawSearch.match(/[?&]data=([^&]+)/)?.[1] ?? null;
+        try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
+        try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
         if (urlData) {
             const decoded = decodeData(urlData);
             if (decoded) { setCode(decoded); return; }
         }
         const c = localStorage.getItem("nsd-code");
         if (c) setCode(c);
-        try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
-        try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
     }, []);
 
     // ── Mobile detection on resize ────────────────────────────────────────
@@ -1422,10 +1421,13 @@ export default function SequenceTool() {
     const activeSvg = isSequence ? svg : mermaidSvg;
 
     const svgDims = useMemo(() => {
-        const m = activeSvg.match(/width="(\d+(?:\.\d+)?)" height="(\d+(?:\.\d+)?)"/);
-        if (m) return { w: parseFloat(m[1]), h: parseFloat(m[2]) };
-        // mermaid sometimes uses viewBox only
-        const vb = activeSvg.match(/viewBox="[^"]*0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
+        if (!activeSvg) return null;
+        // Match width and height independently (order and adjacency don't matter)
+        const w = activeSvg.match(/\bwidth="(\d+(?:\.\d+)?)"/)?.[1];
+        const h = activeSvg.match(/\bheight="(\d+(?:\.\d+)?)"/)?.[1];
+        if (w && h) return { w: parseFloat(w), h: parseFloat(h) };
+        // Fall back to viewBox — grab the last two numbers (W H), handles any origin offset
+        const vb = activeSvg.match(/viewBox="[^"]*\s(\d+(?:\.\d+)?)\s(\d+(?:\.\d+)?)"/);
         return vb ? { w: parseFloat(vb[1]), h: parseFloat(vb[2]) } : null;
     }, [activeSvg]);
     // Inline sync avoids SWC/Linux minifier TDZ bug (useEffect([svgDims]) gets hoisted before declaration)
@@ -1882,6 +1884,9 @@ export default function SequenceTool() {
                     </IconBtn>
                     <IconBtn active={showSettings} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
                         <SlidersHorizontal size={20} strokeWidth={2} />
+                    </IconBtn>
+                    <IconBtn active={false} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={enterPresenter} title="Present">
+                        <PlayCircle size={20} strokeWidth={2} />
                     </IconBtn>
                 </div>
             </header>
