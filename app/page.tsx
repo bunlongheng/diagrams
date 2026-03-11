@@ -1697,7 +1697,7 @@ export default function SequenceTool() {
         return (
             <div
                 ref={canvasRef}
-                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: ut.canvasBg, fontFamily: "Inter, sans-serif", cursor: spotlightActive ? "crosshair" : "default", touchAction: "none", userSelect: "none" }}
+                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: ut.canvasBg, fontFamily: "Inter, sans-serif", cursor: "default", touchAction: "none", userSelect: "none" }}
                 onMouseMove={e => {
                     const rect = canvasRef.current!.getBoundingClientRect();
                     setHoverScreenY(e.clientY - rect.top);
@@ -1710,7 +1710,11 @@ export default function SequenceTool() {
                 }}
                 onMouseLeave={() => {
                     setHoverScreenY(null);
-                    if (spotlightActiveRef.current) { spotlightActiveRef.current = false; setSpotlightActive(false); }
+                    if (spotlightActiveRef.current) {
+                        spotlightActiveRef.current = false; setSpotlightActive(false);
+                        if (canvasRef.current) canvasRef.current.style.cursor = "default";
+                        if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
+                    }
                 }}
                 onMouseDown={e => {
                     if (e.button !== 0) return;
@@ -1718,6 +1722,7 @@ export default function SequenceTool() {
                     // Left-click hold → spotlight mode
                     spotlightActiveRef.current = true;
                     setSpotlightActive(true);
+                    if (canvasRef.current) canvasRef.current.style.cursor = "crosshair";
                     if (spotlightRef.current) {
                         const rect = canvasRef.current!.getBoundingClientRect();
                         const x = e.clientX - rect.left;
@@ -1731,6 +1736,7 @@ export default function SequenceTool() {
                     if (spotlightActiveRef.current) {
                         spotlightActiveRef.current = false;
                         setSpotlightActive(false);
+                        if (canvasRef.current) canvasRef.current.style.cursor = "default";
                         if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
                         return; // don't fire click highlight when releasing spotlight
                     }
