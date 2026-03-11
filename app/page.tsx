@@ -1333,7 +1333,15 @@ export default function SequenceTool() {
         try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
         if (urlData) {
             const decoded = decodeData(urlData);
-            if (decoded) { setCode(decoded); return; }
+            if (decoded) {
+                setCode(decoded);
+                // Strip ?data= from URL so refreshes load from localStorage cleanly
+                const cleanUrl = params.get("view") === "1"
+                    ? `${window.location.pathname}?view=1`
+                    : window.location.pathname;
+                history.replaceState(null, "", cleanUrl);
+                return;
+            }
         }
         const c = localStorage.getItem("nsd-code");
         if (c) setCode(c);
