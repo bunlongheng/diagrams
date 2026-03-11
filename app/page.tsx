@@ -1023,6 +1023,13 @@ export default function SequenceTool() {
     const viewWheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // ── Title inline edit ─────────────────────────────────────────────────
+    // Hide the SVG title element while the input is open to prevent overlap
+    useEffect(() => {
+        const el = svgWrapRef.current?.querySelector<SVGTextElement>("#diagram-title");
+        if (!el) return;
+        el.style.visibility = titleEdit ? "hidden" : "";
+    }, [titleEdit]);
+
     const commitTitle = useCallback((val: string) => {
         setTitleEdit(null);
         const t = val.trim();
