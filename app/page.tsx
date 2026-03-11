@@ -1054,9 +1054,6 @@ export default function SequenceTool() {
     // Keep refs in sync for use in event handlers
     useEffect(() => { zoomRef.current = zoom; }, [zoom]);
     useEffect(() => { panRef.current = { x: panX, y: panY }; }, [panX, panY]);
-    // Re-apply SVG dimensions on every zoom change — covers toolbar buttons, keyboard shortcuts,
-    // preset zoom buttons, and any other path that calls setZoom without calling applyTransform
-    useEffect(() => { applyTransform(panRef.current, zoom); }, [zoom, applyTransform]);
 
     // ── Resize drag (desktop) ───────────────────────────────────────────────
     useEffect(() => {
@@ -1318,12 +1315,6 @@ export default function SequenceTool() {
     }, [activeSvg]);
     // Sync ref during render — avoids SWC/Linux minifier TDZ bug triggered by useEffect([svgDims])
     svgDimsRef.current = svgDims;
-    // Re-apply transform after any SVG content change (title edit, theme change, code edit)
-    // so the diagram stays at the current zoom level instead of snapping back to 100%
-    useEffect(() => {
-        if (!activeSvg) return;
-        applyTransform(panRef.current, zoomRef.current);
-    }, [activeSvg, applyTransform]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fitZoom = useCallback(() => {
         if (!canvasRef.current || !svgDims) return;
@@ -1380,8 +1371,8 @@ export default function SequenceTool() {
             if (tag === "TEXTAREA" || tag === "INPUT") return;
             const mod = e.metaKey || e.ctrlKey;
             if (mod && e.key === "0") { e.preventDefault(); fitZoom(); }
-            if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); setZoom(z => parseFloat(Math.min(4, z + 0.15).toFixed(2))); setFitActive(false); }
-            if (mod && e.key === "-") { e.preventDefault(); setZoom(z => parseFloat(Math.max(0.1, z - 0.15).toFixed(2))); setFitActive(false); }
+            if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); const nz = parseFloat(Math.min(4, zoomRef.current + 0.15).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }
+            if (mod && e.key === "-") { e.preventDefault(); const nz = parseFloat(Math.max(0.1, zoomRef.current - 0.15).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }
             if (e.key === "f" || e.key === "F") fitZoom();
             if (e.key === " " && !e.repeat) { e.preventDefault(); spaceHeld.current = true; }
         };
@@ -1576,9 +1567,9 @@ export default function SequenceTool() {
                     padding: "0 4px", display: "flex", alignItems: "center", gap: 0,
                     boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 10,
                 }}>
-                    <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom - 0.15).toFixed(2)); zoomRef.current = nz; setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                    <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom - 0.15).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
                     <span style={{ color: ut.zoomText, fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-                    <button onClick={() => { const nz = parseFloat(Math.min(4, zoom + 0.15).toFixed(2)); zoomRef.current = nz; setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                    <button onClick={() => { const nz = parseFloat(Math.min(4, zoom + 0.15).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                     <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
                     <button onClick={fitZoom} style={{ color: fitActive ? ut.accent : ut.zoomMuted, fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>Fit</button>
                 </div>
@@ -1814,7 +1805,7 @@ export default function SequenceTool() {
                             }}
                         >
                             <button
-                                onClick={() => { setZoom(z => parseFloat(Math.max(0.2, z - 0.1).toFixed(2))); setFitActive(false); }}
+                                onClick={() => { const nz = parseFloat(Math.max(0.2, zoom - 0.1).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }}
                                 className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
                                 style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: ut.zoomMuted, fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
                             >−</button>
@@ -1824,7 +1815,7 @@ export default function SequenceTool() {
                             </span>
 
                             <button
-                                onClick={() => { setZoom(z => parseFloat(Math.min(4, z + 0.1).toFixed(2))); setFitActive(false); }}
+                                onClick={() => { const nz = parseFloat(Math.min(4, zoom + 0.1).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }}
                                 className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
                                 style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: ut.zoomMuted, fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
                             >+</button>
@@ -1835,7 +1826,7 @@ export default function SequenceTool() {
                             {!isMobile && [50, 75, 100, 150, 200].map(p => (
                                 <button
                                     key={p}
-                                    onClick={() => { setZoom(p / 100); setFitActive(false); }}
+                                    onClick={() => { const nz = p / 100; zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }}
                                     className="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-all hover:bg-black/5"
                                     style={{
                                         color: !fitActive && zoomPct === p ? ut.accent : ut.zoomMuted,
