@@ -142,7 +142,7 @@ function detectDiagramType(code: string): string {
     // Find first non-empty, non-comment, non-title line
     for (const raw of stripped.split("\n")) {
         const line = raw.trim();
-        if (!line || line.startsWith("%%") || /^title\s*:/i.test(line) || /^accTitle\s*:/i.test(line) || /^accDescr\s*:/i.test(line)) continue;
+        if (!line || line.startsWith("%%") || /^title[\s:]/i.test(line) || /^accTitle\s*:/i.test(line) || /^accDescr\s*:/i.test(line)) continue;
         const key = line.toLowerCase().replace(/\s+.*$/, "");
         return MERMAID_TYPES[key] ?? "sequence";
     }
@@ -371,7 +371,7 @@ function parse(code: string): Diagram {
     for (const raw of code.split("\n")) {
         const l = raw.trim();
         if (!l || /^(%%|sequenceDiagram|autonumber|---|```)/.test(l)) continue;
-        const tm = l.match(/^title:\s*(.+)$/i);
+        const tm = l.match(/^title:?\s+(.+)$/i);
         if (tm) { title = tm[1].trim(); continue; }
         const pm = l.match(/^(?:participant|actor)\s+(\S+)(?:\s+as\s+(.+))?$/i);
         if (pm) { addP(pm[1], pm[2]); continue; }
@@ -1097,6 +1097,7 @@ export default function SequenceTool() {
     const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
     const [zoom, setZoom] = useState(1.0);
     const [mermaidSvg, setMermaidSvg] = useState<string>("");
+    const [renderError, setRenderError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState(false);
     const [hoverScreenY, setHoverScreenY] = useState<number | null>(null);
     const [lanIp, setLanIp] = useState<string | null>(null);
@@ -1129,8 +1130,8 @@ export default function SequenceTool() {
         setTitleEdit(null);
         const t = val.trim();
         if (!t) return;
-        setCode(prev => /^title:\s*.+$/im.test(prev)
-            ? prev.replace(/^title:\s*.+$/im, `title: ${t}`)
+        setCode(prev => /^title:?\s+.+$/im.test(prev)
+            ? prev.replace(/^title:?\s+.+$/im, `title: ${t}`)
             : prev.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1title: ${t}\n`));
     }, []);
 
@@ -1363,7 +1364,7 @@ export default function SequenceTool() {
 
     // ── Mermaid rendering for non-sequence diagrams ───────────────────────
     useEffect(() => {
-        if (!mounted || isSequence) { setMermaidSvg(""); return; }
+        if (!mounted || isSequence) { setMermaidSvg(""); setRenderError(null); return; }
         let cancelled = false;
         const currentType = detectDiagramType(code);
         import("mermaid").then(({ default: mermaid }) => {
@@ -1383,10 +1384,10 @@ export default function SequenceTool() {
                 securityLevel: "loose",
             });
             mermaid.render("mermaid-svg-" + Date.now(), stripFrontmatter(code)).then(({ svg: renderedSvg }) => {
-                if (!cancelled) setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType));
+                if (!cancelled) { setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType)); setRenderError(null); }
             }).catch((err) => {
                 console.error("[mermaid render error]", err);
-                if (!cancelled) setMermaidSvg("");
+                if (!cancelled) { setMermaidSvg(""); setRenderError(String(err?.message ?? err ?? "Parse error")); }
             });
         });
         return () => { cancelled = true; };
@@ -1980,6 +1981,13 @@ export default function SequenceTool() {
                                 }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
+                        ) : mounted && renderError && !isSequence ? (
+                            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", maxWidth: "80%", textAlign: "center" }}>
+                                <div style={{ color: "#f87171", fontSize: 12, fontFamily: "monospace", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "12px 16px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                    <span style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>Parse Error</span>
+                                    {renderError}
+                                </div>
+                            </div>
                         ) : mounted && !activeSvg && !isSequence ? (
                             <div style={{ color: ut.zoomMuted, position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}>
                                 Rendering…
