@@ -127,6 +127,20 @@ const MERMAID_TYPES: Record<string, string> = {
     "xychart-beta":  "xychart",
     requirementdiagram: "requirement",
     "c4context":     "c4",
+    "c4container":   "c4",
+    "c4component":   "c4",
+    "c4dynamic":     "c4",
+    "c4deployment":  "c4",
+    block:           "block",
+    "block-beta":    "block",
+    sankey:          "sankey",
+    "sankey-beta":   "sankey",
+    packet:          "packet",
+    "packet-beta":   "packet",
+    kanban:          "kanban",
+    architecture:    "architecture",
+    "architecture-beta": "architecture",
+    zenuml:          "zenuml",
 };
 
 function stripFrontmatter(code: string): string {
@@ -144,23 +158,31 @@ function detectDiagramType(code: string): string {
         const line = raw.trim();
         if (!line || line.startsWith("%%") || /^title[\s:]/i.test(line) || /^accTitle\s*:/i.test(line) || /^accDescr\s*:/i.test(line)) continue;
         const key = line.toLowerCase().replace(/\s+.*$/, "");
-        return MERMAID_TYPES[key] ?? "sequence";
+        return MERMAID_TYPES[key] ?? "mermaid";
     }
-    return "sequence";
+    return "mermaid";
 }
 
 // ── Colorful post-processor for mermaid SVG ───────────────────────────────────
 const NODE_SELECTOR_MAP: Record<string, string> = {
-    flowchart: ".node",
-    class:     ".classGroup",
-    er:        "", // handled separately below
-    state:     ".node",
-    gantt:     ".task",
-    pie:       ".slice",
-    git:       ".commit-bullet",
-    mindmap:   ".mindmap-node",
-    timeline:  ".timeline-event",
-    quadrant:  ".quadrant-point",
+    flowchart:    ".node",
+    class:        ".classGroup",
+    er:           "", // handled separately below
+    state:        ".node",
+    gantt:        ".task",
+    pie:          ".slice",
+    git:          ".commit-bullet",
+    mindmap:      ".mindmap-node",
+    timeline:     ".timeline-event",
+    quadrant:     ".quadrant-point",
+    block:        ".block",
+    sankey:       "",
+    packet:       "",
+    kanban:       ".kanban-item",
+    architecture: ".node",
+    zenuml:       "",
+    c4:           ".person,.system,.container,.component",
+    mermaid:      ".node",
 };
 
 function applyColorfulMermaidStyle(svgString: string, opts: Opts, diagramType: string): string {
