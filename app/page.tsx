@@ -10,7 +10,7 @@ import LZString from "lz-string";
 Prism.languages.mermaid = {
     comment:  { pattern: /%%.*/, greedy: true },
     title:    { pattern: /^title:.+/m, inside: { keyword: /^title:/, string: /.+/ } },
-    keyword:  /\b(sequenceDiagram|participant|actor|as|autonumber|loop|alt|else|end|opt|par|and|critical|break|rect|Note|over|left of|right of|activate|deactivate|graph|flowchart|classDiagram|stateDiagram|erDiagram|gantt|pie|mindmap|timeline|gitGraph|subgraph)\b/,
+    keyword:  /\b(sequenceDiagram|participant|actor|as|autonumber|loop|alt|else|end|opt|par|and|critical|break|rect|Note|over|left of|right of|activate|deactivate|graph|flowchart|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|mindmap|timeline|gitGraph|subgraph|quadrantChart|xychart-beta|requirementDiagram|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|block-beta|sankey-beta|packet-beta|kanban|architecture-beta|radar-beta|treemap|journey|section|direction|root|dateFormat|axisFormat|excludes|includes|todayMarker|title|accTitle|accDescr|click|style|classDef|linkStyle|interpolate|commit|branch|checkout|merge|cherry-pick|column|service|group|in)\b/,
     arrow:    /-->>|->>|-->|->|==>/,
     label:    { pattern: /:.+/, inside: { punctuation: /:/, string: /.+/ } },
     number:   /\b\d+\b/,
@@ -140,7 +140,9 @@ const MERMAID_TYPES: Record<string, string> = {
     kanban:          "kanban",
     architecture:    "architecture",
     "architecture-beta": "architecture",
-    zenuml:          "zenuml",
+    radar:           "radar",
+    "radar-beta":    "radar",
+    treemap:         "treemap",
 };
 
 function stripFrontmatter(code: string): string {
@@ -180,7 +182,8 @@ const NODE_SELECTOR_MAP: Record<string, string> = {
     packet:       "",
     kanban:       ".kanban-item",
     architecture: ".node",
-    zenuml:       "",
+    radar:        "",
+    treemap:      "",
     c4:           ".person,.system,.container,.component",
     mermaid:      ".node",
 };
