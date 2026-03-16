@@ -2008,9 +2008,14 @@ export default function SequenceTool() {
                             />
                         ) : mounted && renderError && !isSequence ? (
                             <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", maxWidth: "80%", textAlign: "center" }}>
-                                <div style={{ color: "#f87171", fontSize: 12, fontFamily: "monospace", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "12px 16px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                <div style={{ position: "relative", color: "#f87171", fontSize: 12, fontFamily: "monospace", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "12px 16px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                                     <span style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>Parse Error</span>
                                     {renderError}
+                                    <button
+                                        onClick={() => { navigator.clipboard.writeText(renderError ?? ""); }}
+                                        title="Copy error"
+                                        style={{ position: "absolute", top: 8, right: 8, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 5, color: "#f87171", cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: "2px 7px", lineHeight: 1.6 }}
+                                    >copy</button>
                                 </div>
                             </div>
                         ) : mounted && !activeSvg && !isSequence ? (
