@@ -1412,7 +1412,12 @@ export default function SequenceTool() {
                 },
                 securityLevel: "loose",
             });
-            mermaid.render("mermaid-svg-" + Date.now(), stripFrontmatter(code)).then(({ svg: renderedSvg }) => {
+            const stripped = stripFrontmatter(code);
+            // architecture-beta: dots inside [...] labels cause parse errors — strip them
+            const sanitized = currentType === "architecture"
+                ? stripped.replace(/\[([^\]]*)\]/g, (_, inner) => `[${inner.replace(/\./g, "")}]`)
+                : stripped;
+            mermaid.render("mermaid-svg-" + Date.now(), sanitized).then(({ svg: renderedSvg }) => {
                 if (!cancelled) { setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType)); setRenderError(null); }
             }).catch((err) => {
                 console.error("[mermaid render error]", err);
