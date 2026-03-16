@@ -148,7 +148,8 @@ const MERMAID_TYPES: Record<string, string> = {
 function stripFrontmatter(code: string): string {
     let s = code.trim();
     // Strip markdown code fences: ```mermaid ... ``` or ``` ... ```
-    const fenceMatch = s.match(/^```[a-z-]*\n([\s\S]*?)```\s*$/i);
+    // handles digits (stateDiagram-v2), spaces, \r\n, trailing whitespace
+    const fenceMatch = s.match(/^`{3}[^\n\r]*[\r\n]+([\s\S]*?)`{3}\s*$/);
     if (fenceMatch) s = fenceMatch[1].trimStart();
     const lines = s.split("\n");
     if (lines[0]?.trim() !== "---") return s;
