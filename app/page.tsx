@@ -1414,9 +1414,12 @@ export default function SequenceTool() {
                 securityLevel: "loose",
             });
             const stripped = stripFrontmatter(code);
-            // architecture-beta: dots inside [...] labels cause parse errors — strip them
+            // architecture-beta: ESM bundle doesn't support `end` keyword for groups,
+            // and rejects dots inside [...] labels — sanitize both
             const sanitized = currentType === "architecture"
-                ? stripped.replace(/\[([^\]]*)\]/g, (_, inner) => `[${inner.replace(/\./g, "")}]`)
+                ? stripped
+                    .split("\n").filter(l => l.trim() !== "end").join("\n")
+                    .replace(/\[([^\]]*)\]/g, (_, inner) => `[${inner.replace(/\./g, "")}]`)
                 : stripped;
             mermaid.render("mermaid-svg-" + Date.now(), sanitized).then(({ svg: renderedSvg }) => {
                 if (!cancelled) { setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType)); setRenderError(null); }
