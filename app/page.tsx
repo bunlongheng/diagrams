@@ -1831,7 +1831,7 @@ export default function SequenceTool() {
             >
 
                 {mounted && activeSvg && (
-                    <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default" }}
+                    <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}
                         dangerouslySetInnerHTML={{ __html: activeSvg }}
                     />
                 )}
