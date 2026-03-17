@@ -1218,6 +1218,7 @@ export default function SequenceTool() {
     }, []);
 
     // ── Wheel: pan (no modifier) + zoom-to-cursor (ctrl/cmd) ─────────────
+    const wheelEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (!mounted) return;
         const el = canvasRef.current;
@@ -1225,7 +1226,7 @@ export default function SequenceTool() {
         const onWheel = (e: WheelEvent) => {
             e.preventDefault();
             if (e.ctrlKey || e.metaKey) {
-                // Zoom toward cursor
+                // Zoom toward cursor — direct DOM only, no setState during gesture
                 const rect = el.getBoundingClientRect();
                 const dx = e.clientX - (rect.left + rect.width / 2);
                 const dy = e.clientY - (rect.top + rect.height / 2);
@@ -1236,13 +1237,16 @@ export default function SequenceTool() {
                 zoomRef.current = newZoom;
                 panRef.current = { x: dx * (1 - ratio) + panRef.current.x * ratio, y: dy * (1 - ratio) + panRef.current.y * ratio };
                 applyTransform(panRef.current, zoomRef.current);
-                setZoom(newZoom); setPanX(panRef.current.x); setPanY(panRef.current.y); setFitActive(false);
             } else {
-                // Pan
+                // Pan — direct DOM only
                 panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
                 applyTransform(panRef.current, zoomRef.current);
-                setPanX(panRef.current.x); setPanY(panRef.current.y);
             }
+            // Sync React state only after wheel stops — avoids re-renders during gesture
+            if (wheelEndTimer.current) clearTimeout(wheelEndTimer.current);
+            wheelEndTimer.current = setTimeout(() => {
+                setZoom(zoomRef.current); setPanX(panRef.current.x); setPanY(panRef.current.y); setFitActive(false);
+            }, 80);
         };
         el.addEventListener("wheel", onWheel, { passive: false });
         return () => el.removeEventListener("wheel", onWheel);
