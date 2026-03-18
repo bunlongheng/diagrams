@@ -500,7 +500,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const { participants: ps, messages: ms } = d;
     if (!ps.length) return "";
     const N = ps.length;
-    const BR = 6, HS = l.spacing, LP = l.margin ?? 50, MG = l.stepHeight;
+    const BR = 6, LP = l.margin ?? 50, MG = l.stepHeight;
     const AH = 8, SW = 50, SH = 36, FS = l.textSize;
     const BH = Math.max(36, Math.round(FS * 2.6));
     const diagramTitle = d.title ?? DEFAULT_DIAGRAM_TITLE;
@@ -512,15 +512,30 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const HPAD = 24, ICON_W = o.showIcons ? 26 : 0;
     const pBW = ps.map(p => Math.max(l.boxWidth, Math.ceil(p.label.length * (FS * 0.65) + ICON_W + HPAD)));
     const BW = Math.max(...pBW);
-    const cx = (i: number) => LP + BW / 2 + i * HS;
     const idx = new Map(ps.map((p, i) => [p.id, i]));
-    const W = 2 * LP + (N - 1) * HS + BW;
+    // Per-column spacing — only widen the gap between the two participants that need it
+    const CHAR_W = FS * 0.62, PILL_PAD = 56;
+    const baseCol = o.autoLayout ? Math.max(BW + 64, 140) : l.spacing;
+    const colGap = new Array(Math.max(1, N - 1)).fill(baseCol) as number[];
+    if (o.autoLayout) {
+        ms.forEach(msg => {
+            const fi = idx.get(msg.from) ?? -1, ti = idx.get(msg.to) ?? -1;
+            if (fi < 0 || ti < 0 || fi === ti) return;
+            const lo = Math.min(fi, ti), hi = Math.max(fi, ti), span = hi - lo;
+            const perCol = (msg.text.length * CHAR_W + PILL_PAD) / span;
+            for (let c = lo; c < hi; c++) if (perCol > colGap[c]) colGap[c] = perCol;
+        });
+    }
+    const colX: number[] = [LP + BW / 2];
+    for (let i = 1; i < N; i++) colX.push(colX[i - 1] + colGap[i - 1]);
+    const cx = (i: number) => colX[i] ?? LP + BW / 2;
+    const W = N > 1 ? colX[N - 1] + BW / 2 + LP : 2 * LP + BW;
     const VP = l.vPad ?? 44;
     const H = TOP_PAD + TITLE_H + TP + BH + VP + ms.length * MG + VP + BH + BOT_PAD;
     const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - BH;
     const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * MG;
     const f = `'${o.font}', sans-serif`;
-    const ld = LIFELINE_DASH[o.lifelineDash] ?? LIFELINE_DASH.long;
+    const ld = LIFELINE_DASH.solid;
     const lifelineSW = ld.sw ?? 1.5;
     const lifelineCapAttr = ld.cap ? ` stroke-linecap="${ld.cap}"` : "";
     const th = THEMES[o.theme] ?? THEMES.light;
@@ -853,39 +868,6 @@ function SettingsContent({
                                     </div>
                                 </div>
                             ))}
-                        </div>
-                    </div>
-
-                    <div style={{ height: 1, background: ut.divider }} />
-
-                    {/* Line type */}
-                    <div>
-                        <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Line</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-                            {([
-                                ["solid", "Solid",      "—————"],
-                                ["long",  "Long dash",  "– – –"],
-                                ["small", "Short dash", "- - -"],
-                                ["dot",   "Dot",        "· · ·"],
-                            ] as const).map(([v, label, preview]) => {
-                                const active = opts.lifelineDash === v;
-                                return (
-                                    <button key={v} onClick={() => upd({ lifelineDash: v })}
-                                        style={{
-                                            padding: mobile ? "8px 6px" : "6px 6px", borderRadius: 8,
-                                            fontSize: fs(10), fontWeight: 700,
-                                            border: active ? `2px solid ${ut.accent}` : "2px solid transparent",
-                                            background: ut.overlayBtnBg,
-                                            color: active ? ut.accent : ut.inactiveTabText,
-                                            cursor: "pointer", transition: "border 0.15s, color 0.15s",
-                                            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                                        }}
-                                    >
-                                        <span style={{ fontSize: fs(11), letterSpacing: v === "solid" ? "0" : "2px" }}>{preview}</span>
-                                        <span style={{ fontSize: fs(8), opacity: 0.7, fontWeight: 500 }}>{label}</span>
-                                    </button>
-                                );
-                            })}
                         </div>
                     </div>
 
@@ -1246,7 +1228,7 @@ export default function SequenceTool() {
     const wheelEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const wheelRafId = useRef<number | null>(null);
     useEffect(() => {
-        if (!mounted) return;
+        if (!mounted || viewMode) return;
         const el = canvasRef.current;
         if (!el) return;
         const onWheel = (e: WheelEvent) => {
@@ -1282,7 +1264,7 @@ export default function SequenceTool() {
         };
         el.addEventListener("wheel", onWheel, { passive: false });
         return () => el.removeEventListener("wheel", onWheel);
-    }, [mounted]);
+    }, [mounted, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Touch: pinch-zoom + pan ───────────────────────────────────────────
     useEffect(() => {
@@ -1366,7 +1348,7 @@ export default function SequenceTool() {
             el.removeEventListener("touchmove", onTouchMove);
             el.removeEventListener("touchend", onTouchEnd);
         };
-    }, [mounted]);
+    }, [mounted, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Mouse drag pan ────────────────────────────────────────────────────
     useEffect(() => {
@@ -1794,7 +1776,7 @@ export default function SequenceTool() {
         return (
             <div
                 ref={canvasRef}
-                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: ut.canvasBg, fontFamily: "Inter, sans-serif", cursor: "crosshair", touchAction: "none", userSelect: "none" }}
+                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: "#ffffff", fontFamily: "Inter, sans-serif", cursor: isMobile ? "default" : "crosshair", touchAction: "none", userSelect: "none" }}
                 onMouseMove={e => {
                     const rect = canvasRef.current!.getBoundingClientRect();
                     setHoverScreenY(e.clientY - rect.top);
@@ -1901,20 +1883,22 @@ export default function SequenceTool() {
                 )}
 
                 {/* Minimal zoom bar */}
-                <div style={{
-                    position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-                    background: ut.zoomBg, border: `1px solid ${ut.zoomBorder}`, borderRadius: 14,
-                    padding: "0 4px", display: "flex", alignItems: "center", gap: 0,
-                    boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 20,
-                }}>
-                    <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom / 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                    <span style={{ color: ut.zoomText, fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-                    <button onClick={() => { const nz = parseFloat(Math.min(4, zoom * 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                    <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
-                    <button onClick={fitZoom} style={{ color: fitActive ? ut.accent : ut.zoomMuted, fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>Fit</button>
-                    <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
-                    <button onClick={exitPresenter} style={{ color: "#f43f5e", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>✕ Exit</button>
-                </div>
+                {!isMobile && (
+                    <div style={{
+                        position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
+                        background: ut.zoomBg, border: `1px solid ${ut.zoomBorder}`, borderRadius: 14,
+                        padding: "0 4px", display: "flex", alignItems: "center", gap: 0,
+                        boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 20,
+                    }}>
+                        <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom / 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                        <span style={{ color: ut.zoomText, fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => { const nz = parseFloat(Math.min(4, zoom * 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                        <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
+                        <button onClick={fitZoom} style={{ color: fitActive ? ut.accent : ut.zoomMuted, fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>Fit</button>
+                        <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
+                        <button onClick={exitPresenter} style={{ color: "#f43f5e", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>✕ Exit</button>
+                    </div>
+                )}
             </div>
         );
     }
@@ -2274,9 +2258,10 @@ export default function SequenceTool() {
                 )}
             </div>
 
-            {/* ── Mobile: Code editor full-screen overlay ── */}
+            {/* ── Mobile: Code editor bottom sheet ── */}
             {isMobile && showCode && (
-                <div className="fixed inset-0 z-50 flex flex-col" style={{ background: ut.codeBg }}>
+                <div className="fixed inset-0 z-50" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setShowCode(false)}>
+                <div className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-2xl overflow-hidden" style={{ background: ut.codeBg, maxHeight: "92vh" }} onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between px-4 shrink-0"
                         style={{ height: 54, background: ut.codeHeaderBg, borderBottom: `1px solid ${ut.codeBorder}` }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: ut.zoomMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>
@@ -2320,6 +2305,7 @@ export default function SequenceTool() {
                             style={{ background: ut.accent, color: "white" }}
                         >Done</button>
                     </div>
+                </div>
                 </div>
             )}
 
