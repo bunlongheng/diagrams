@@ -1,6 +1,0 @@
-[build]
-  command = "export PATH=$HOME/.bun/bin:$PATH && bun run build"
-  publish = ".next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
