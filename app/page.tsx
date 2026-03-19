@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Code2, SlidersHorizontal, X } from "lucide-react";
+import { Code2, SlidersHorizontal, X, ArrowLeft } from "lucide-react";
+import { CuteToast, showToast } from "./CuteToast";
+import { createClient } from "@/lib/supabase/client";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
 import { QRCodeSVG } from "qrcode.react";
-import LZString from "lz-string";
 
 // ── Mermaid Prism grammar ──────────────────────────────────────────────────────
 Prism.languages.mermaid = {
@@ -168,6 +169,14 @@ function detectDiagramType(code: string): string {
         return MERMAID_TYPES[key] ?? "mermaid";
     }
     return "mermaid";
+}
+
+function extractTitle(code: string): string {
+    const m = code.match(/^\s*(?:title|accTitle):?\s+(.+)$/im);
+    if (m) return m[1].trim();
+    const type = detectDiagramType(code);
+    if (type === "mermaid" || type === "sequence") return "Untitled";
+    return type.charAt(0).toUpperCase() + type.slice(1) + " Diagram";
 }
 
 // ── Colorful post-processor for mermaid SVG ───────────────────────────────────
@@ -459,8 +468,8 @@ type UiTheme = {
 };
 const UI_THEMES: Record<string, UiTheme> = {
     light: {
-        headerBg: "#374151",   headerBorder: "#4b5563",   headerText: "#f9fafb",
-        canvasBg:  "#c8d0da",
+        headerBg: "#ffffff",   headerBorder: "#e5e7eb",   headerText: "#374151",
+        canvasBg:  "#e8ecf0",
         panelBg:   "#f1f5f9",  panelBorder:  "#e2e8f0",
         tabBarBg:  "#e2e8f0",  activeTab:    "#ffffff",   activeTabText: "#1e293b", inactiveTabText: "#94a3b8",
         sectionLabel: "#94a3b8", bodyText:   "#334155",   divider: "#e2e8f0",
@@ -702,61 +711,11 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
 
 // ── Default Code ──────────────────────────────────────────────────────────────
 const DEFAULT_CODE = `sequenceDiagram
-    title Full CI/CD Flow — Vercel Deploy + Linode E2E (Merged View)
-
-    actor Dev as 👨‍💻 Developer
-    participant GH as GitHub main
-    participant Lint as Lint + Typecheck
-    participant Unit as Unit Tests
-    participant Build as Build Job
-    participant Vercel as ▲ Vercel
-    participant Linode as 🖥️ Linode :3000
-    participant Runner as Linode Runner
-    participant PW as Playwright
-    participant Notify as /api/n Email
-
-    Dev->>GH: git push main
-
-    Note over GH,Linode: ── ci-deploy.yml fires immediately ──
-
-    par Parallel
-        GH->>Lint: typecheck + lint
-        GH->>Unit: vitest run
-    end
-    Lint-->>GH: ✅
-    Unit-->>GH: ✅
-    GH->>Build: npm run build
-    Build-->>GH: ✅ .next artifact
-
-    par Deploy targets
-        GH->>Linode: POST /api/deploy + gitSha
-        Linode->>Linode: git pull + rebuild + restart
-        GH->>Vercel: deploy hook
-        Vercel-->>Dev: ✅ bheng.vercel.app live
-    end
-
-    Note over Runner,PW: ── e2e-nightly.yml fires every 4h (self-hosted, free) ──
-
-    Runner->>GH: checkout latest main
-    Runner->>Runner: npm ci + npm run build
-    Runner->>Linode: npm run start :3000
-    Runner->>PW: npx playwright test
-    PW->>Linode: 110+ tests
-
-    alt All pass
-        PW-->>Runner: ✅ exit 0
-    else Failure
-        PW-->>Runner: ❌ exit 1
-        Runner->>Notify: POST failure
-        Notify-->>Dev: 📧 alert
-    end
-
-    Note over GH,Notify: ── drift-alert.yml polls every hour ──
-    GH->>Linode: GET /api/monitor/deployment
-    alt Prod > 12h behind main
-        Linode-->>Notify: drift detected
-        Notify-->>Dev: 📧 alert
-    end`;
+    title My Diagram
+    participant A
+    participant B
+    A->>B: Hello
+    B-->>A: Hi!`;
 
 // ── Slider row ────────────────────────────────────────────────────────────────
 function SliderRow({ label, value, min, max, unit = "", fontSize = 12, ut, onChange }: {
@@ -784,20 +743,6 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
     );
 }
 
-// ── URL encode/decode helpers (LZ-String compressed) ──────────────────────────
-function encodeData(s: string): string {
-    try { return LZString.compressToEncodedURIComponent(s); } catch { return ""; }
-}
-function decodeData(s: string): string {
-    // Normalize: percent-decode %2B/%2F etc, then replace any spaces with + (handles old raw-+ URLs and form-encoded URLs)
-    let normalized = s;
-    try { normalized = decodeURIComponent(s).replace(/ /g, "+"); } catch { normalized = s.replace(/ /g, "+"); }
-    try {
-        const lz = LZString.decompressFromEncodedURIComponent(normalized);
-        if (lz) return lz;
-    } catch {}
-    try { return decodeURIComponent(atob(s).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")); } catch { return ""; }
-}
 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
@@ -805,7 +750,7 @@ function SettingsContent({
     upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl, onPresent,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
-    mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string;
+    mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string | null;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void;
@@ -1119,9 +1064,11 @@ function IconPicker({ value, color, ut, onChange }: { value: string; color: stri
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SequenceTool() {
+    const [supabaseUser, setSupabaseUser] = useState<{ id: string; email?: string; user_metadata?: Record<string,string> } | null>(null);
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [code, setCode] = useState(DEFAULT_CODE);
+    const [code, setCode] = useState("");
     const [showCode, setShowCode] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [editorDark, setEditorDark] = useState(false);
@@ -1140,6 +1087,7 @@ export default function SequenceTool() {
     const [viewMode, setViewMode] = useState(false);
     const [hoverScreenY, setHoverScreenY] = useState<number | null>(null);
     const [lanIp, setLanIp] = useState<string | null>(null);
+    const [savedDiagramId, setSavedDiagramId] = useState<string | null>(null);
     const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
 
     const diagramType = useMemo(() => detectDiagramType(code), [code]);
@@ -1148,7 +1096,6 @@ export default function SequenceTool() {
     const [panX, setPanX] = useState(0);
     const [panY, setPanY] = useState(0);
     const [isPanning, setIsPanning] = useState(false);
-    const [showShortcuts, setShowShortcuts] = useState(false);
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const svgWrapRef = useRef<HTMLDivElement>(null);
@@ -1372,35 +1319,41 @@ export default function SequenceTool() {
     useEffect(() => {
         setMounted(true);
         setIsMobile(window.innerWidth < 768);
+        // Listen for auth state — works with implicit OAuth flow
+        const supabase = createClient();
+        // Load opts/layout from localStorage
+        const rawSearch = window.location.search;
+        const params = new URLSearchParams(rawSearch);
+        if (params.get("view") === "1") setViewMode(true);
+        try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o!) })); } catch {}
+        try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l!) })); } catch {}
+
+        const urlId = params.get("id");
+        if (urlId) setSavedDiagramId(urlId);
+
+        // Wait for auth session, then fetch diagram (RLS requires auth for owner-scoped reads)
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) setSupabaseUser(data.session.user);
+            if (urlId) {
+                supabase.from("diagrams").select("code").eq("id", urlId).single()
+                    .then(({ data: d }) => { if (d?.code) setCode(d.code); });
+            }
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSupabaseUser(session?.user ?? null);
+        });
+        // Close user menu on outside click
+        const closeMenu = () => setShowUserMenu(false);
+        window.addEventListener("click", closeMenu, true);
         // Fetch LAN IP for QR code when on localhost
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
             fetch("/api/lan-ip").then(r => r.json()).then(d => { if (d.ip) setLanIp(d.ip); }).catch(() => {});
         }
-
-        // URL ?data= takes priority over localStorage for code, but always load opts/layout
-        const rawSearch = window.location.search;
-        const params = new URLSearchParams(rawSearch);
-        if (params.get("view") === "1") setViewMode(true);
-        // Use raw regex so + is preserved as-is (not converted to space by URLSearchParams)
-        // decodeData handles both raw-+ (old URLs) and %2B (new URLs)
-        const urlData = rawSearch.match(/[?&]data=([^&]*)/)?.[1] ?? null;
-        try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o) })); } catch {}
-        try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l) })); } catch {}
-        if (urlData) {
-            const decoded = decodeData(urlData);
-            if (decoded) {
-                // Save directly to localStorage before stripping the URL so refresh works
-                localStorage.setItem("nsd-code", decoded);
-                setCode(decoded);
-                const cleanUrl = params.get("view") === "1"
-                    ? `${window.location.pathname}?view=1`
-                    : window.location.pathname;
-                history.replaceState(null, "", cleanUrl);
-                return;
-            }
-        }
-        const c = localStorage.getItem("nsd-code");
-        if (c) setCode(c);
+        return () => {
+            window.removeEventListener("click", closeMenu, true);
+            subscription.unsubscribe();
+        };
     }, []);
 
     // ── Mobile detection on resize ────────────────────────────────────────
@@ -1411,13 +1364,13 @@ export default function SequenceTool() {
     }, []);
 
     // ── Persist ───────────────────────────────────────────────────────────
-    useEffect(() => { if (mounted) localStorage.setItem("nsd-code", code); }, [code, mounted]);
+    // code is NOT persisted to localStorage — loaded from URL or paste only
     useEffect(() => { if (mounted) localStorage.setItem("nsd-opts", JSON.stringify(opts)); }, [opts, mounted]);
     useEffect(() => { if (mounted) localStorage.setItem("nsd-layout", JSON.stringify(layout)); }, [layout, mounted]);
 
     // ── Mermaid rendering for non-sequence diagrams ───────────────────────
     useEffect(() => {
-        if (!mounted || isSequence) { setMermaidSvg(""); setRenderError(null); return; }
+        if (!mounted || isSequence || !code.trim()) { setMermaidSvg(""); setRenderError(null); return; }
         let cancelled = false;
         const currentType = detectDiagramType(code);
         import("mermaid").then(async ({ default: mermaid }) => {
@@ -1454,7 +1407,7 @@ export default function SequenceTool() {
         return () => { cancelled = true; };
     }, [code, opts.theme, mounted, isSequence]);
 
-    const diagram = useMemo(() => parse(code), [code]);
+    const diagram = useMemo(() => code.trim() ? parse(code) : parse("sequenceDiagram"), [code]);
 
     // ── Auto layout — compute from diagram content ────────────────────────
     const computedLayout = useMemo((): Layout => {
@@ -1627,22 +1580,56 @@ export default function SequenceTool() {
         });
     }, [code]);
 
+    const saveDiagram = useCallback(async (codeToSave?: string) => {
+        if (!supabaseUser) return;
+        const c = codeToSave ?? code;
+        if (!c.trim()) return; // don't save empty/placeholder
+        const title = extractTitle(c);
+        const dtype = detectDiagramType(c);
+        showToast("Saving…", { color: "#6366f1" });
+        try {
+            const supabase = createClient();
+            // Find unique title + slug
+            const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled";
+            let slug = base; let finalTitle = title; let n = 2;
+            while (true) {
+                const { data } = await supabase.from("diagrams").select("id").eq("slug", slug).limit(1);
+                if (!data || data.length === 0) break;
+                slug = `${base}-${n}`;
+                finalTitle = `${title} ${n}`;
+                n++;
+            }
+            const { data: saved, error } = await supabase.from("diagrams").insert({ user_id: supabaseUser.id, title: finalTitle, slug, code: c, diagram_type: dtype }).select("id").single();
+            if (error) showToast(`Error: ${error.message}`, { color: "#ef4444" });
+            else {
+                showToast("Saved ✓", { color: "#16a34a" });
+                if (saved?.id) {
+                    setSavedDiagramId(saved.id);
+                    const viewParam = new URLSearchParams(window.location.search).get("view") === "1" ? "&view=1" : "";
+                    history.replaceState(null, "", `/?id=${saved.id}${viewParam}`);
+                }
+            }
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            showToast(`Save failed: ${msg}`, { color: "#ef4444" });
+        }
+    }, [supabaseUser, code]);
+
     const buildShareUrl = useCallback(() => {
-        const encoded = encodeURIComponent(encodeData(code));
-        return `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-    }, [code]);
+        if (savedDiagramId) return `${window.location.origin}/d/${savedDiagramId}`;
+        return null; // not saved yet
+    }, [savedDiagramId]);
 
     const buildViewUrl = useCallback(() => {
-        const encoded = encodeURIComponent(encodeData(code));
+        if (!savedDiagramId) return null;
         const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-        const base = isLocal && lanIp
-            ? `http://${lanIp}:${window.location.port}`
-            : window.location.origin;
-        return `${base}${window.location.pathname}?data=${encoded}&view=1`;
-    }, [code, lanIp]);
+        const base = isLocal && lanIp ? `http://${lanIp}:${window.location.port}` : window.location.origin;
+        return `${base}/d/${savedDiagramId}`;
+    }, [savedDiagramId, lanIp]);
 
     const copyLink = useCallback(() => {
         const url = buildShareUrl();
+        if (!url) { showToast("Paste a diagram first to get a link", { color: "#f59e0b" }); return; }
         const confirm = () => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 1500); };
         const fallback = () => {
             try {
@@ -1663,6 +1650,7 @@ export default function SequenceTool() {
 
     const share = useCallback(() => {
         const url = buildShareUrl();
+        if (!url) { showToast("Paste a diagram first to share", { color: "#f59e0b" }); return; }
         if (navigator.share) {
             navigator.share({ title: "Mermaid++ Diagram", url }).catch(() => {});
         } else {
@@ -1675,15 +1663,15 @@ export default function SequenceTool() {
 
     const fireConfetti = useCallback(() => {
         import("canvas-confetti").then(({ default: confetti }) => {
-            const end = Date.now() + 5000;
+            const end = Date.now() + 3000;
             const colors = ["#ff595e","#ffca3a","#22c55e","#1982c4","#8ac926","#ff924c","#48cae4","#f97316"];
             let last = 0;
             const burst = (ts: number) => {
-                if (ts - last > 50) {
+                if (ts - last > 60) {
                     last = ts;
-                    confetti({ particleCount: 20, angle: 60, spread: 100, origin: { x: 0, y: 0.5 }, colors });
-                    confetti({ particleCount: 20, angle: 120, spread: 100, origin: { x: 1, y: 0.5 }, colors });
-                    confetti({ particleCount: 15, spread: 130, startVelocity: 50, origin: { x: Math.random(), y: 0 }, colors });
+                    confetti({ particleCount: 12, angle: 60, spread: 90, origin: { x: 0, y: 0.5 }, colors });
+                    confetti({ particleCount: 12, angle: 120, spread: 90, origin: { x: 1, y: 0.5 }, colors });
+                    confetti({ particleCount: 9, spread: 110, startVelocity: 40, origin: { x: Math.random(), y: 0 }, colors });
                 }
                 if (Date.now() < end) requestAnimationFrame(burst);
                 else confetti.reset();
@@ -1696,11 +1684,31 @@ export default function SequenceTool() {
         const pasted = e.clipboardData.getData("text");
         const parsed = parse(pasted);
         if (parsed.participants.length >= 2) setTimeout(fireConfetti, 150);
-        // Re-fit after paste so new diagram fills the canvas
         setTimeout(fitZoom, 120);
+        // Don't save here — onGlobalPaste (capture phase) already handles mermaid saves
     }, [fireConfetti, fitZoom]);
 
-    const zoomPct = Math.round(zoom * 100);
+    // ── Global paste listener — always intercepts mermaid, creates new record ──
+    useEffect(() => {
+        const onGlobalPaste = (e: ClipboardEvent) => {
+            const pasted = e.clipboardData?.getData("text") ?? "";
+            if (!pasted.trim()) return;
+            const looksLikeMermaid = /^(sequenceDiagram|flowchart|graph\s|classDiagram|erDiagram|gantt|pie|mindmap|gitGraph|journey)/im.test(pasted.trim());
+            if (!looksLikeMermaid) return;
+            // Always intercept mermaid — prevent textarea from inserting raw text
+            e.preventDefault();
+            setCode(pasted);
+            setSavedDiagramId(null);
+            const parsed = parse(pasted);
+            if (parsed.participants.length >= 2) setTimeout(fireConfetti, 150);
+            setTimeout(fitZoom, 120);
+            // Always save as a NEW record
+            if (supabaseUser) setTimeout(() => saveDiagram(pasted), 300);
+        };
+        document.addEventListener("paste", onGlobalPaste, true);
+        return () => document.removeEventListener("paste", onGlobalPaste, true);
+    }, [fireConfetti, fitZoom, supabaseUser, saveDiagram]);
+
     const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
 
     // ── Presenter mode ────────────────────────────────────────────────────
@@ -1882,29 +1890,13 @@ export default function SequenceTool() {
                     </div>
                 )}
 
-                {/* Minimal zoom bar */}
-                {!isMobile && (
-                    <div style={{
-                        position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-                        background: ut.zoomBg, border: `1px solid ${ut.zoomBorder}`, borderRadius: 14,
-                        padding: "0 4px", display: "flex", alignItems: "center", gap: 0,
-                        boxShadow: "0 2px 20px rgba(0,0,0,0.18)", zIndex: 20,
-                    }}>
-                        <button onClick={() => { const nz = parseFloat(Math.max(0.2, zoom / 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                        <span style={{ color: ut.zoomText, fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-                        <button onClick={() => { const nz = parseFloat(Math.min(4, zoom * 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }} style={{ color: ut.zoomMuted, fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                        <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
-                        <button onClick={fitZoom} style={{ color: fitActive ? ut.accent : ut.zoomMuted, fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>Fit</button>
-                        <div style={{ width: 1, height: 20, background: ut.zoomDivider, margin: "0 4px" }} />
-                        <button onClick={exitPresenter} style={{ color: "#f43f5e", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer", letterSpacing: "0.04em", height: 44, padding: "0 12px" }}>✕ Exit</button>
-                    </div>
-                )}
             </div>
         );
     }
 
     return (
         <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
+            <CuteToast />
             <style>{`
                 ${opts.theme === "light" ? `
                 .token.comment     { color: #6e7781; font-style: italic; }
@@ -1942,29 +1934,87 @@ export default function SequenceTool() {
             `}</style>
 
             {/* ── HEADER ── */}
-            <header className="flex items-center px-4 shrink-0"
-                style={{ height: 54, background: ut.headerBg, borderBottom: `1px solid ${ut.headerBorder}` }}>
-                <span className="font-bold text-[16px] tracking-tight" style={{ color: ut.headerText, letterSpacing: "-0.3px" }}>
-                    Mermaid<span className="rainbow-pp">++</span>
-                </span>
-                {diagramType !== "sequence" && (
-                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, background: ut.badgeBg,
-                        color: ut.badgeText, borderRadius: 6, padding: "2px 7px", textTransform: "uppercase",
-                        letterSpacing: "0.08em" }}>
-                        {diagramType}
-                    </span>
-                )}
-                <div className="flex-1" />
-                <div className="flex gap-2">
-<IconBtn active={showCode} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }}>
-                        <Code2 size={16} strokeWidth={2} />
-                    </IconBtn>
-                    <IconBtn active={showSettings} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }}>
-                        <SlidersHorizontal size={16} strokeWidth={2} />
-                    </IconBtn>
-                    <IconBtn active={false} accent={ut.accent} inactiveBg={opts.theme === "light" ? "rgba(255,255,255,0.12)" : ut.activeTab} color={ut.headerText} onClick={enterPresenter} title="Present">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><polygon points="3,1 15,8 3,15"/></svg>
-                    </IconBtn>
+            <header style={{
+                height: 54, background: ut.headerBg, borderBottom: opts.theme === "light" ? "none" : `1px solid ${ut.headerBorder}`,
+                display: "flex", alignItems: "center", padding: "0 16px", gap: 10, flexShrink: 0,
+            }}>
+
+                {/* Back — ideas-style floating pill */}
+                <button
+                    onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/gallery")}
+                    style={{
+                        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                        border: `1px solid ${ut.headerBorder}`,
+                        background: opts.theme === "light" ? "#fff" : ut.headerBg,
+                        boxShadow: opts.theme === "light" ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
+                        color: "#64748b", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "background 0.1s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = opts.theme === "light" ? "#f1f5f9" : ut.activeTab)}
+                    onMouseLeave={e => (e.currentTarget.style.background = opts.theme === "light" ? "#fff" : ut.headerBg)}
+                ><ArrowLeft size={16} strokeWidth={2} /></button>
+
+                <div style={{ flex: 1 }} />
+
+                {/* Action toolbar — ideas-style floating pill */}
+                <div style={{
+                    display: "flex", alignItems: "center", gap: 2,
+                    background: opts.theme === "light" ? "#fff" : ut.headerBg,
+                    border: `1px solid ${ut.headerBorder}`,
+                    borderRadius: 14,
+                    boxShadow: opts.theme === "light" ? "0 4px 24px rgba(0,0,0,0.08)" : "none",
+                    padding: "4px 6px",
+                }}>
+                    {/* Code */}
+                    <button onClick={() => { setShowCode(v => !v); if (showSettings) setShowSettings(false); }} style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        padding: "0 10px", height: 30, borderRadius: 8, border: "none",
+                        background: showCode ? (opts.theme === "light" ? "#f1f5f9" : ut.activeTab) : "transparent",
+                        color: showCode ? (opts.theme === "light" ? "#1e293b" : ut.activeTabText) : "#64748b",
+                        cursor: "pointer", fontSize: 13, fontWeight: showCode ? 600 : 400, transition: "all 0.1s",
+                    }}
+                        onMouseEnter={e => { if (!showCode) e.currentTarget.style.background = opts.theme === "light" ? "#f1f5f9" : ut.activeTab; }}
+                        onMouseLeave={e => { if (!showCode) e.currentTarget.style.background = "transparent"; }}
+                    >
+                        <Code2 size={14} strokeWidth={2} />
+                        {!isMobile && "Code"}
+                    </button>
+
+                    {/* separator */}
+                    <div style={{ width: 1, height: 18, background: ut.headerBorder, flexShrink: 0, margin: "0 2px" }} />
+
+                    {/* Play */}
+                    <button onClick={enterPresenter} style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        padding: "0 10px", height: 30, borderRadius: 8, border: "none",
+                        background: "transparent", color: "#64748b",
+                        cursor: "pointer", fontSize: 13, fontWeight: 400, transition: "background 0.1s",
+                    }}
+                        onMouseEnter={e => (e.currentTarget.style.background = opts.theme === "light" ? "#f1f5f9" : ut.activeTab)}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    >
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><polygon points="3,1 15,8 3,15"/></svg>
+                        {!isMobile && "Play"}
+                    </button>
+
+                    {/* separator */}
+                    <div style={{ width: 1, height: 18, background: ut.headerBorder, flexShrink: 0, margin: "0 2px" }} />
+
+                    {/* Format */}
+                    <button onClick={() => { setShowSettings(v => !v); if (showCode && isMobile) setShowCode(false); }} style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        padding: "0 10px", height: 30, borderRadius: 8, border: "none",
+                        background: showSettings ? (opts.theme === "light" ? "#f1f5f9" : ut.activeTab) : "transparent",
+                        color: showSettings ? (opts.theme === "light" ? "#1e293b" : ut.activeTabText) : "#64748b",
+                        cursor: "pointer", fontSize: 13, fontWeight: showSettings ? 600 : 400, transition: "all 0.1s",
+                    }}
+                        onMouseEnter={e => { if (!showSettings) e.currentTarget.style.background = opts.theme === "light" ? "#f1f5f9" : ut.activeTab; }}
+                        onMouseLeave={e => { if (!showSettings) e.currentTarget.style.background = "transparent"; }}
+                    >
+                        <SlidersHorizontal size={14} strokeWidth={2} />
+                        {!isMobile && "Format"}
+                    </button>
                 </div>
             </header>
 
@@ -2136,115 +2186,6 @@ export default function SequenceTool() {
                         />
                     )}
 
-                    {/* Zoom toolbar */}
-                    {mounted && (
-                        <div
-                            className="absolute bottom-4 z-10 flex items-center"
-                            style={{
-                                left: "50%", transform: "translateX(-50%)",
-                                background: ut.zoomBg,
-                                border: `1px solid ${ut.zoomBorder}`,
-                                borderRadius: 12,
-                                padding: isMobile ? "4px 8px" : "3px 10px",
-                                boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
-                                gap: isMobile ? 0 : 2,
-                                whiteSpace: "nowrap",
-                            }}
-                        >
-                            <button
-                                onClick={() => { const nz = parseFloat(Math.max(0.2, zoom - 0.1).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }}
-                                className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
-                                style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: ut.zoomMuted, fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
-                            >−</button>
-
-                            <span style={{ color: ut.zoomText, fontSize: isMobile ? 13 : 11, fontWeight: 600, minWidth: isMobile ? 48 : 38, textAlign: "center" }}>
-                                {zoomPct}%
-                            </span>
-
-                            <button
-                                onClick={() => { const nz = parseFloat(Math.min(4, zoom + 0.1).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }}
-                                className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
-                                style={{ width: isMobile ? 38 : 24, height: isMobile ? 38 : 24, color: ut.zoomMuted, fontSize: isMobile ? 22 : 18, lineHeight: 1 }}
-                            >+</button>
-
-                            <div style={{ width: 1, height: 14, background: ut.zoomDivider, margin: isMobile ? "0 6px" : "0 6px" }} />
-
-                            {/* Desktop: preset zoom buttons */}
-                            {!isMobile && [50, 75, 100, 150, 200].map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => { const nz = p / 100; zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); }}
-                                    className="rounded px-1.5 py-0.5 text-[10px] font-semibold transition-all hover:bg-black/5"
-                                    style={{
-                                        color: !fitActive && zoomPct === p ? ut.accent : ut.zoomMuted,
-                                        background: !fitActive && zoomPct === p ? `${ut.accent}14` : "transparent",
-                                    }}
-                                >{p}%</button>
-                            ))}
-
-                            {!isMobile && <div style={{ width: 1, height: 14, background: ut.zoomDivider, margin: "0 6px" }} />}
-
-                            <button
-                                onClick={fitZoom}
-                                className="rounded hover:bg-black/5 transition-all"
-                                style={{
-                                    padding: isMobile ? "0 10px" : "0 8px",
-                                    height: isMobile ? 38 : "auto",
-                                    paddingTop: isMobile ? 0 : "2px",
-                                    paddingBottom: isMobile ? 0 : "2px",
-                                    fontSize: isMobile ? 13 : 10,
-                                    fontWeight: 700,
-                                    color: fitActive ? ut.accent : ut.zoomMuted,
-                                    background: fitActive ? `${ut.accent}14` : "transparent",
-                                    letterSpacing: "0.04em",
-                                }}
-                            >Fit</button>
-
-                            {!isMobile && <>
-                                <div style={{ width: 1, height: 14, background: ut.zoomDivider, margin: "0 6px" }} />
-                                <div style={{ position: "relative" }}>
-                                    <button
-                                        onClick={() => setShowShortcuts(v => !v)}
-                                        className="flex items-center justify-center rounded hover:bg-black/5 transition-all"
-                                        style={{ width: 20, height: 20, fontSize: 10, fontWeight: 700, color: showShortcuts ? ut.accent : ut.zoomMuted, border: `1px solid ${showShortcuts ? ut.accent : ut.zoomBorder}`, borderRadius: "50%", lineHeight: 1 }}
-                                    >?</button>
-                                    {showShortcuts && (
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                bottom: "calc(100% + 10px)",
-                                                right: 0,
-                                                background: ut.zoomBg,
-                                                border: `1px solid ${ut.zoomBorder}`,
-                                                borderRadius: 10,
-                                                boxShadow: "0 4px 24px rgba(0,0,0,0.14)",
-                                                padding: "12px 14px",
-                                                minWidth: 220,
-                                                zIndex: 50,
-                                            }}
-                                        >
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: ut.zoomMuted, letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>Keyboard Shortcuts</div>
-                                            {[
-                                                ["Scroll", "Pan canvas"],
-                                                ["Ctrl+Scroll", "Zoom to cursor"],
-                                                ["Double-click", "Zoom in 1.5×"],
-                                                ["Space+Drag", "Pan canvas"],
-                                                ["F", "Fit to window"],
-                                                ["⌘0 / Ctrl+0", "Fit to window"],
-                                                ["⌘+ / Ctrl++", "Zoom in"],
-                                                ["⌘− / Ctrl+−", "Zoom out"],
-                                            ].map(([key, desc]) => (
-                                                <div key={key} className="flex items-center justify-between" style={{ gap: 12, marginBottom: 5 }}>
-                                                    <code style={{ fontSize: 10, background: ut.activeTab, color: ut.zoomText, padding: "1px 6px", borderRadius: 4, fontFamily: "monospace", whiteSpace: "nowrap" }}>{key}</code>
-                                                    <span style={{ fontSize: 11, color: ut.zoomMuted }}>{desc}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </>}
-                        </div>
-                    )}
                 </div>
 
                 {/* Desktop: Settings panel */}
