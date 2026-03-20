@@ -29,10 +29,10 @@ interface Participant { id: string; label: string; color: string }
 type Arrow = "solid" | "dashed";
 interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; displayStep?: number }
 interface Diagram { participants: Participant[]; messages: SeqMsg[]; title?: string }
-interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; showIcons: boolean; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string> }
+interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; iconMode: "none" | "icons" | "emoji"; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string> }
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
-const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "light", showIcons: false, icons: {}, boxOverlay: "none", autoLayout: true, labelOverrides: {} };
+const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "none", icons: {}, boxOverlay: "none", autoLayout: true, labelOverrides: {} };
 const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120, vPad: 44 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const TITLE_H = 68;
     const TP = 50;
     // Auto-fit box width to label content; Width slider = minimum / extra padding
-    const HPAD = 24, ICON_W = o.showIcons ? 26 : 0;
+    const HPAD = 24, ICON_W = o.iconMode === "icons" ? 26 : 0;
     const pBW = ps.map(p => Math.max(l.boxWidth, Math.ceil(p.label.length * (FS * 0.65) + ICON_W + HPAD)));
     const BW = Math.max(...pBW);
     const idx = new Map(ps.map((p, i) => [p.id, i]));
@@ -394,26 +394,28 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const labelEmoji = emojiM ? emojiM[1] : null;
         const labelText = labelEmoji ? p.label.slice(emojiM![0].length).trim() : p.label;
 
-        if (labelEmoji) {
+        if (o.iconMode === "emoji" && labelEmoji) {
             const IW = BH; // white section is square
             const clipId = `eic${i}_${Math.round(y)}`;
             defs.push(`<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}"/></clipPath>`);
+            parts.push(`<rect x="${x}" y="${y}" width="${IW}" height="${BH}" fill="white" fill-opacity="0.92" clip-path="url(#${clipId})"/>`);
+            parts.push(`<line x1="${x+IW}" y1="${y+4}" x2="${x+IW}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.4" stroke-width="1"/>`);
+            parts.push(`<text x="${x + IW/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-size="${BH*0.52}">${labelEmoji}</text>`);
+            parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(labelText)}</text>`);
+        } else if (o.iconMode === "icons") {
+            const IW = BH; // white section is square
+            const clipId = `ico${i}_${Math.round(y)}`;
+            const pColor = pal[i % pal.length];
+            const ISIZE = Math.min(BH - 8, 18);
+            const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
+            defs.push(`<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}"/></clipPath>`);
             // White left section
             parts.push(`<rect x="${x}" y="${y}" width="${IW}" height="${BH}" fill="white" fill-opacity="0.92" clip-path="url(#${clipId})"/>`);
-            // Subtle divider
             parts.push(`<line x1="${x+IW}" y1="${y+4}" x2="${x+IW}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.4" stroke-width="1"/>`);
-            // Emoji text centered in white section
-            parts.push(`<text x="${x + IW/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-size="${BH*0.52}">${labelEmoji}</text>`);
+            // Icon centered in white section, colored stroke
+            parts.push(renderIcon(iconKey, x + IW / 2, y + BH / 2, ISIZE, pColor));
             // Label text in remaining colored area
-            parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(labelText)}</text>`);
-        } else if (o.showIcons) {
-            const IPAD = 10, GAP = 6, ISIZE = Math.min(BH - 10, 18);
-            const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
-            const estLabelW = p.label.length * (FS * 0.6);
-            const contentW = ISIZE + GAP + estLabelW;
-            const contentX = Math.max(x + IPAD, cx(i) - contentW / 2);
-            parts.push(renderIcon(iconKey, contentX + ISIZE / 2, y + BH / 2, ISIZE, th.labelFill));
-            parts.push(`<text x="${contentX + ISIZE + GAP}" y="${y + BH / 2 + 1}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
+            parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         } else {
             parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         }
@@ -736,27 +738,25 @@ function SettingsContent({
                     </div>
                 </div>
 
-                {/* Icons toggle */}
+                {/* Icon mode 3-way selector */}
                 <div style={{ height: 1, background: ut.divider }} />
-                <div className="flex items-center justify-between cursor-pointer select-none"
-                    onClick={() => upd({ showIcons: !opts.showIcons })}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: fs(11), color: ut.bodyText, fontWeight: 400 }}>Icons</span>
-                    <div style={{
-                        position: "relative", width: 34, height: 20, borderRadius: 10, flexShrink: 0,
-                        background: opts.showIcons ? ut.toggleOn : ut.tabBarBg,
-                        transition: "background 0.2s", cursor: "pointer",
-                    }}>
-                        <div style={{
-                            position: "absolute", top: 2, width: 16, height: 16, borderRadius: 8,
-                            background: "white", left: opts.showIcons ? 16 : 2,
-                            transition: "left 0.2s ease",
-                            boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
-                        }} />
+                    <div style={{ display: "flex", gap: 4 }}>
+                        {(["none", "icons", "emoji"] as const).map(mode => (
+                            <button key={mode} onClick={() => upd({ iconMode: mode })} style={{
+                                flex: 1, padding: "3px 0", fontSize: fs(10), fontWeight: 600,
+                                borderRadius: 6, border: "none", cursor: "pointer",
+                                background: opts.iconMode === mode ? ut.toggleOn : ut.tabBarBg,
+                                color: opts.iconMode === mode ? "#fff" : ut.bodyText,
+                                textTransform: "capitalize", transition: "background 0.15s",
+                            }}>{mode}</button>
+                        ))}
                     </div>
                 </div>
 
-                {/* Icons editor — only when showIcons is on */}
-                {opts.showIcons && participants.length > 0 && <>
+                {/* Icons editor — only when iconMode is "icons" */}
+                {opts.iconMode === "icons" && participants.length > 0 && <>
                     <div style={{ height: 1, background: ut.divider }} />
                     <div>
                         <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Icons</div>
@@ -1266,7 +1266,7 @@ function DiagramEditor() {
         if (!opts.autoLayout) return layout;
 
         const rows = diagram.messages.length;
-        const ICON_W = opts.showIcons ? 26 : 0;
+        const ICON_W = opts.iconMode === "icons" ? 26 : 0;
 
         // Font size: shrink slightly for large diagrams
         const FS = rows > 30 ? 11 : rows > 15 ? 12 : 13;
@@ -1292,7 +1292,7 @@ function DiagramEditor() {
         const margin = Math.round(Math.max(80, spacing * 0.4));
 
         return { textSize: FS, boxWidth, spacing, stepHeight, vPad, margin };
-    }, [opts.autoLayout, opts.showIcons, diagram, layout]);
+    }, [opts.autoLayout, opts.iconMode, diagram, layout]);
 
     const svg = useMemo(() => buildSvg(diagram, opts, computedLayout), [diagram, opts, computedLayout]);
 
