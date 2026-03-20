@@ -1,5 +1,5 @@
 {
-  "name": "mermaid",
+  "name": "diagrams",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,7 +15,6 @@
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.574.0",
     "lz-string": "^1.5.0",
-    "mermaid": "^11.13.0",
     "next": "^15.1.0",
     "prismjs": "^1.30.0",
     "qrcode.react": "^4.2.0",
@@ -25,6 +24,7 @@
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "@types/lz-string": "^1.5.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

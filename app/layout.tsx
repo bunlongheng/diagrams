@@ -9,25 +9,25 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Mermaid++",
-  description: "Beautiful sequence diagram generator — paste any mermaid sequence syntax and get a polished visual instantly.",
+  title: "Diagrams",
+  description: "Beautiful diagram generator — paste any diagram syntax and get a polished visual instantly.",
   metadataBase: new URL("https://mermaid-bheng.vercel.app"),
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Mermaid++",
+    title: "Diagrams",
   },
   openGraph: {
-    title: "Mermaid++ — Sequence Diagram Generator",
-    description: "Paste mermaid syntax, get beautiful sequence diagrams instantly.",
+    title: "Diagrams — Sequence Diagram Generator",
+    description: "Paste diagram syntax, get beautiful diagrams instantly.",
     type: "website",
     url: "https://mermaid-bheng.vercel.app",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mermaid++ — Sequence Diagram Generator",
-    description: "Paste mermaid syntax, get beautiful sequence diagrams instantly.",
+    title: "Diagrams — Sequence Diagram Generator",
+    description: "Paste diagram syntax, get beautiful diagrams instantly.",
   },
 };
 

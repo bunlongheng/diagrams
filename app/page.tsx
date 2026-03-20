@@ -6,9 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
 import { QRCodeSVG } from "qrcode.react";
+import DiagramsShell from "./DiagramsShell";
+import LZString from "lz-string";
 
-// ── Mermaid Prism grammar ──────────────────────────────────────────────────────
-Prism.languages.mermaid = {
+// ── Sequence diagram Prism grammar ────────────────────────────────────────────
+Prism.languages.sequence = {
     comment:  { pattern: /%%.*/, greedy: true },
     title:    { pattern: /^title:.+/m, inside: { keyword: /^title:/, string: /.+/ } },
     keyword:  /\b(sequenceDiagram|participant|actor|as|autonumber|loop|alt|else|end|opt|par|and|critical|break|rect|Note|over|left of|right of|activate|deactivate|graph|flowchart|classDiagram|stateDiagram|stateDiagram-v2|erDiagram|gantt|pie|mindmap|timeline|gitGraph|subgraph|quadrantChart|xychart-beta|requirementDiagram|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|block-beta|sankey-beta|packet-beta|kanban|architecture-beta|radar-beta|treemap|journey|section|direction|root|dateFormat|axisFormat|excludes|includes|todayMarker|title|accTitle|accDescr|click|style|classDef|linkStyle|interpolate|commit|branch|checkout|merge|cherry-pick|column|service|group|in)\b/,
@@ -19,7 +21,7 @@ Prism.languages.mermaid = {
 };
 
 function highlight(code: string) {
-    return Prism.highlight(code, Prism.languages.mermaid, "mermaid");
+    return Prism.highlight(code, Prism.languages.sequence, "sequence");
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,10 +29,10 @@ interface Participant { id: string; label: string; color: string }
 type Arrow = "solid" | "dashed";
 interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; displayStep?: number }
 interface Diagram { participants: Participant[]; messages: SeqMsg[]; title?: string }
-interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; showIcons: boolean; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean }
+interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; showIcons: boolean; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string> }
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
-const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "light", showIcons: false, icons: {}, boxOverlay: "none", autoLayout: true };
+const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "light", showIcons: false, icons: {}, boxOverlay: "none", autoLayout: true, labelOverrides: {} };
 const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120, vPad: 44 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -108,7 +110,7 @@ function renderIcon(key: string, icx: number, icy: number, size: number, color =
 }
 
 // ── Diagram type detection ────────────────────────────────────────────────────
-const MERMAID_TYPES: Record<string, string> = {
+const DIAGRAM_TYPES: Record<string, string> = {
     sequencediagram: "sequence",
     graph:           "flowchart",
     flowchart:       "flowchart",
@@ -148,7 +150,7 @@ const MERMAID_TYPES: Record<string, string> = {
 
 function stripFrontmatter(code: string): string {
     let s = code.trim();
-    // Strip markdown code fences: ```mermaid ... ``` or ``` ... ```
+    // Strip markdown code fences: ```sequenceDiagram ... ``` or ``` ... ```
     // handles digits (stateDiagram-v2), spaces, \r\n, trailing whitespace
     const fenceMatch = s.match(/^`{3}[^\n\r]*[\r\n]+([\s\S]*?)`{3}\s*$/);
     if (fenceMatch) s = fenceMatch[1].trimStart();
@@ -166,235 +168,20 @@ function detectDiagramType(code: string): string {
         const line = raw.trim();
         if (!line || line.startsWith("%%") || /^title[\s:]/i.test(line) || /^accTitle\s*:/i.test(line) || /^accDescr\s*:/i.test(line)) continue;
         const key = line.toLowerCase().replace(/\s+.*$/, "");
-        return MERMAID_TYPES[key] ?? "mermaid";
+        return DIAGRAM_TYPES[key] ?? "diagram";
     }
-    return "mermaid";
+    return "diagram";
 }
 
 function extractTitle(code: string): string {
     const m = code.match(/^\s*(?:title|accTitle):?\s+(.+)$/im);
     if (m) return m[1].trim();
     const type = detectDiagramType(code);
-    if (type === "mermaid" || type === "sequence") return "Untitled";
+    if (type === "diagram" || type === "sequence") return "Untitled";
     return type.charAt(0).toUpperCase() + type.slice(1) + " Diagram";
 }
 
-// ── Colorful post-processor for mermaid SVG ───────────────────────────────────
-const NODE_SELECTOR_MAP: Record<string, string> = {
-    flowchart:    ".node",
-    class:        ".classGroup",
-    er:           "", // handled separately below
-    state:        ".node",
-    gantt:        ".task",
-    pie:          ".slice",
-    git:          ".commit-bullet",
-    mindmap:      ".mindmap-node",
-    timeline:     ".timeline-event",
-    quadrant:     ".quadrant-point",
-    block:        ".block",
-    sankey:       "",
-    packet:       "",
-    kanban:       ".kanban-item",
-    architecture: ".node",
-    radar:        "",
-    treemap:      "",
-    c4:           ".person,.system,.container,.component",
-    mermaid:      ".node",
-};
 
-function applyColorfulMermaidStyle(svgString: string, opts: Opts, diagramType: string): string {
-    if (typeof window === "undefined") return svgString;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgString, "image/svg+xml");
-    const svgEl = doc.querySelector("svg");
-    if (!svgEl) return svgString;
-
-    const th = THEMES[opts.theme] ?? THEMES.light;
-    const f = `'Inter', sans-serif`;
-
-    // These types rely on their mermaid CSS for structural shape rendering —
-    // stripping styles breaks them (e.g. gitGraph commits become black triangles).
-    // For these, keep original styles and just inject overrides after.
-    const CSS_KEEP = new Set(["git", "timeline", "kanban", "sankey", "packet", "radar", "treemap"]);
-    if (!CSS_KEEP.has(diagramType)) {
-        doc.querySelectorAll("style").forEach(s => s.remove());
-    }
-
-    // ── Background ─────────────────────────────────────────────────────────
-    const rootBg = svgEl.querySelector(":scope > rect");
-    if (rootBg) {
-        (rootBg as SVGElement).style.fill = th.bg;
-    } else {
-        const bgRect = doc.createElementNS("http://www.w3.org/2000/svg", "rect");
-        bgRect.setAttribute("x", "0"); bgRect.setAttribute("y", "0");
-        bgRect.setAttribute("width", "100%"); bgRect.setAttribute("height", "100%");
-        bgRect.style.fill = th.bg;
-        svgEl.insertBefore(bgRect, svgEl.firstChild);
-    }
-
-    // ── CSS for foreignObject HTML content (inline styles can't reach inside) ─
-    const styleEl = doc.createElementNS("http://www.w3.org/2000/svg", "style");
-    styleEl.textContent = `
-        .node foreignObject div, .node foreignObject span, .node foreignObject p,
-        .node .nodeLabel, .node .label div, .node .label p, .node .label span,
-        .classGroup foreignObject div, .classGroup foreignObject span {
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            font-family: ${f} !important;
-        }
-        .edgeLabel foreignObject div, .edgeLabel .label {
-            color: ${th.plainTextFill} !important;
-            background: transparent !important;
-            font-family: ${f} !important;
-        }
-        .er.entityLabel, .entityLabel { dominant-baseline: middle; }
-        .er.attributeType, .er.attributeName, .er.attributeKeyType { dominant-baseline: middle; }
-    `;
-    svgEl.insertBefore(styleEl, svgEl.firstChild);
-
-    // ── Color each node (inline style beats any CSS rule) ──────────────────
-    const nodeSelector = NODE_SELECTOR_MAP[diagramType] ?? ".node";
-    const nodes = nodeSelector ? Array.from(doc.querySelectorAll(nodeSelector)) : [];
-    nodes.forEach((node, i) => {
-        const color = PAL[i % PAL.length];
-
-        node.querySelectorAll("rect").forEach(el => {
-            const r = el as SVGElement;
-            r.style.fill = color;
-            r.style.stroke = "none";
-            r.setAttribute("rx", "8"); r.setAttribute("ry", "8");
-        });
-        node.querySelectorAll("polygon").forEach(el => {
-            const p = el as SVGElement;
-            p.style.fill = color; p.style.stroke = "none";
-        });
-        node.querySelectorAll("circle, ellipse").forEach(el => {
-            const c = el as SVGElement;
-            c.style.fill = color; c.style.stroke = "none";
-        });
-        node.querySelectorAll("path.basic, path.label-container, path.outer").forEach(el => {
-            const p = el as SVGElement;
-            p.style.fill = color; p.style.stroke = "none";
-        });
-        node.querySelectorAll("text").forEach(el => {
-            const t = el as SVGElement;
-            t.style.fill = "#ffffff";
-            t.style.fontWeight = "700";
-            t.style.fontFamily = f;
-        });
-    });
-
-    // ── ER diagram ─────────────────────────────────────────────────────────
-    if (diagramType === "er") {
-        const pal = opts.theme === "monokai" ? PAL_MONOKAI : PAL;
-        const isDark = opts.theme !== "light";
-        const rowBg = isDark ? (opts.theme === "monokai" ? "#3a383d" : "#1e2030") : "#f8fafc";
-        const rowBgAlt = isDark ? (opts.theme === "monokai" ? "#332f38" : "#181926") : "#f1f5f9";
-        const rowBorder = isDark ? "rgba(255,255,255,0.07)" : "#e2e8f0";
-        const textColor = isDark ? "#e2e8f0" : "#1e293b";
-        const subtleText = isDark ? "#94a3b8" : "#64748b";
-
-        // Color each entity header a different palette color
-        const entityGroups = Array.from(doc.querySelectorAll("g.er.entityGroup, g[id^='entity-']"));
-        const entityColorMap = new Map<string, string>();
-        entityGroups.forEach((g, i) => {
-            const color = pal[i % pal.length];
-            entityColorMap.set(g.id, color);
-            g.querySelectorAll("rect.er.entityBox, .entityBox").forEach(el => {
-                const r = el as SVGElement;
-                r.style.fill = color; r.style.stroke = "none";
-                r.setAttribute("rx", "6"); r.setAttribute("ry", "6");
-            });
-            g.querySelectorAll("text.er.entityLabel, .entityLabel").forEach(el => {
-                const t = el as SVGElement;
-                t.style.fill = "#221F22"; t.style.fontWeight = "800";
-                t.style.fontFamily = f; t.style.fontSize = "13px";
-            });
-        });
-
-        // Style attribute rows
-        Array.from(doc.querySelectorAll("g.er.attributeGroup, g[id^='attr-']")).forEach((g, i) => {
-            g.querySelectorAll("rect.er.attributeBoxOdd").forEach(el => {
-                const r = el as SVGElement;
-                r.style.fill = rowBg; r.style.stroke = rowBorder;
-            });
-            g.querySelectorAll("rect.er.attributeBoxEven").forEach(el => {
-                const r = el as SVGElement;
-                r.style.fill = rowBgAlt; r.style.stroke = rowBorder;
-            });
-            g.querySelectorAll("text.er.attributeType, .attributeType").forEach(el => {
-                const t = el as SVGElement;
-                t.style.fill = subtleText; t.style.fontFamily = f; t.style.fontSize = "11px";
-            });
-            g.querySelectorAll("text.er.attributeName, .attributeName").forEach(el => {
-                const t = el as SVGElement;
-                t.style.fill = textColor; t.style.fontFamily = f; t.style.fontWeight = "500";
-            });
-            // PK → gold, FK → teal
-            g.querySelectorAll("text.er.attributeKeyType, .attributeKeyType").forEach(el => {
-                const t = el as SVGElement;
-                const val = t.textContent?.trim().toUpperCase() ?? "";
-                t.style.fill = val === "PK" ? "#FFD866" : val === "FK" ? "#78DCE8" : subtleText;
-                t.style.fontWeight = "700"; t.style.fontFamily = f; t.style.fontSize = "10px";
-            });
-        });
-
-        // Style relationship lines & labels
-        doc.querySelectorAll("path.er.relationshipLine, line.er.relationshipLine").forEach(el => {
-            const r = el as SVGElement;
-            r.style.stroke = isDark ? "#6b7280" : "#94a3b8";
-            r.style.strokeWidth = "1.5"; r.style.fill = "none";
-        });
-        doc.querySelectorAll("text.er.relationshipLabel, .relationshipLabel").forEach(el => {
-            const t = el as SVGElement;
-            t.style.fill = isDark ? "#a9dc76" : "#16a34a";
-            t.style.fontWeight = "600"; t.style.fontFamily = f; t.style.fontSize = "11px";
-        });
-        doc.querySelectorAll("rect.er.relationshipLabelBox").forEach(el => {
-            (el as SVGElement).style.fill = "transparent";
-            (el as SVGElement).style.stroke = "none";
-        });
-        // ER marker/arrowheads
-        doc.querySelectorAll("marker path, marker line, marker circle").forEach(el => {
-            (el as SVGElement).style.stroke = isDark ? "#6b7280" : "#94a3b8";
-            (el as SVGElement).style.fill = "none";
-        });
-    }
-
-    // ── Pie slices ─────────────────────────────────────────────────────────
-    if (diagramType === "pie") {
-        doc.querySelectorAll("path.slice, .pieSlice, .slice, path[class*='slice']").forEach((el, i) => {
-            const s = el as SVGElement;
-            s.style.fill = PAL[i % PAL.length];
-            s.style.stroke = th.bg;
-            s.style.strokeWidth = "2";
-        });
-    }
-
-    // ── Edge paths ─────────────────────────────────────────────────────────
-    doc.querySelectorAll(".edgePath path, .flowchart-link, .transition").forEach(el => {
-        const e = el as SVGElement;
-        e.style.stroke = "#64748b";
-        e.style.strokeWidth = "1.5";
-        e.style.fill = "none";
-    });
-
-    // ── Arrowheads ─────────────────────────────────────────────────────────
-    doc.querySelectorAll("marker polygon, marker path, marker circle").forEach(el => {
-        const m = el as SVGElement;
-        m.style.fill = "#64748b";
-        m.style.stroke = "none";
-    });
-
-    // ── SVG text outside nodes (titles, axis labels, etc.) ─────────────────
-    doc.querySelectorAll(".titleText, .sectionTitle").forEach(el => {
-        const t = el as SVGElement;
-        t.style.fill = th.titleFill;
-        t.style.fontFamily = f;
-    });
-
-    return new XMLSerializer().serializeToString(doc);
-}
 
 // ── Parser ────────────────────────────────────────────────────────────────────
 const DEFAULT_DIAGRAM_TITLE = "Sequence Diagram";
@@ -506,8 +293,10 @@ const UI_THEMES: Record<string, UiTheme> = {
 };
 
 function buildSvg(d: Diagram, o: Opts, l: Layout): string {
-    const { participants: ps, messages: ms } = d;
-    if (!ps.length) return "";
+    const { participants: ps_raw, messages: ms } = d;
+    if (!ps_raw.length) return "";
+    // Apply label overrides
+    const ps = ps_raw.map(p => o.labelOverrides?.[p.id] ? { ...p, label: o.labelOverrides[p.id] } : p);
     const N = ps.length;
     const BR = 6, LP = l.margin ?? 50, MG = l.stepHeight;
     const AH = 8, SW = 50, SH = 36, FS = l.textSize;
@@ -600,7 +389,24 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                 parts.push(`<g ${cg} fill="none" stroke="white" stroke-width="1" opacity="0.22"><circle cx="${bcx}" cy="${bcy}" r="${BH*0.28}"/><circle cx="${bcx}" cy="${bcy}" r="${BH*0.55}"/><circle cx="${bcx}" cy="${bcy}" r="${BH*0.82}"/><circle cx="${bcx}" cy="${bcy}" r="${maxR}"/></g>`);
             }
         }
-        if (o.showIcons) {
+        // Detect leading emoji in label → white-bg icon section on left
+        const emojiM = p.label.match(/^(\p{Extended_Pictographic}[\uFE0F\u20E3]?(?:\u200D\p{Extended_Pictographic}[\uFE0F\u20E3]?)*)\s*/u);
+        const labelEmoji = emojiM ? emojiM[1] : null;
+        const labelText = labelEmoji ? p.label.slice(emojiM![0].length).trim() : p.label;
+
+        if (labelEmoji) {
+            const IW = BH; // white section is square
+            const clipId = `eic${i}_${Math.round(y)}`;
+            defs.push(`<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}"/></clipPath>`);
+            // White left section
+            parts.push(`<rect x="${x}" y="${y}" width="${IW}" height="${BH}" fill="white" fill-opacity="0.92" clip-path="url(#${clipId})"/>`);
+            // Subtle divider
+            parts.push(`<line x1="${x+IW}" y1="${y+4}" x2="${x+IW}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.4" stroke-width="1"/>`);
+            // Emoji text centered in white section
+            parts.push(`<text x="${x + IW/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-size="${BH*0.52}">${labelEmoji}</text>`);
+            // Label text in remaining colored area
+            parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="700" fill="${th.labelFill}">${esc(labelText)}</text>`);
+        } else if (o.showIcons) {
             const IPAD = 10, GAP = 6, ISIZE = Math.min(BH - 10, 18);
             const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
             const estLabelW = p.label.length * (FS * 0.6);
@@ -958,14 +764,27 @@ function SettingsContent({
                             {participants.map(p => {
                                 const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
                                 return (
-                                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
-                                        <span style={{ fontSize: fs(12), color: ut.bodyText, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
-                                        <IconPicker
-                                            value={currentKey}
-                                            color={p.color}
-                                            ut={ut}
-                                            onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
+                                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <div style={{ width: 32, height: 28, flexShrink: 0, background: "#fff", borderRadius: 6, boxShadow: "0 1px 4px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <IconPicker
+                                                value={currentKey}
+                                                color={p.color}
+                                                ut={ut}
+                                                onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
+                                            />
+                                        </div>
+                                        <input
+                                            defaultValue={opts.labelOverrides?.[p.id] ?? p.label}
+                                            key={opts.labelOverrides?.[p.id] ?? p.label}
+                                            onBlur={e => {
+                                                const v = e.currentTarget.value.trim();
+                                                if (v && v !== p.label) upd({ labelOverrides: { ...opts.labelOverrides, [p.id]: v } });
+                                                else if (!v || v === p.label) {
+                                                    const next = { ...opts.labelOverrides }; delete next[p.id]; upd({ labelOverrides: next });
+                                                }
+                                            }}
+                                            onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                            style={{ fontSize: fs(12), color: ut.bodyText, flex: 1, minWidth: 0, background: "transparent", border: "none", borderBottom: `1px solid ${ut.divider}`, outline: "none", fontFamily: "inherit", padding: "1px 2px" }}
                                         />
                                     </div>
                                 );
@@ -975,9 +794,6 @@ function SettingsContent({
                 </>}
             </>}
 
-            {tab === "components" && !isSequence && (
-                <div style={{ color: ut.inactiveTabText, fontSize: fs(12), textAlign: "center", paddingTop: 20 }}>No component options for this diagram type.</div>
-            )}
         </div>
     );
 }
@@ -1028,7 +844,7 @@ function IconPicker({ value, color, ut, onChange }: { value: string; color: stri
                 <IconSvg iconKey={value} size={15} color="white" />
             </button>
             {open && (
-                <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 999, background: ut.panelBg, border: `1px solid ${ut.panelBorder}`, borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
+                <div style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", zIndex: 999, background: ut.panelBg, border: `1px solid ${ut.panelBorder}`, borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
                     <input
                         autoFocus
                         value={search}
@@ -1062,8 +878,67 @@ function IconPicker({ value, color, ut, onChange }: { value: string; color: stri
     );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-export default function SequenceTool() {
+// ── Router ────────────────────────────────────────────────────────────────────
+export default function Home() {
+    const [view, setView] = useState<"loading" | "index" | "editor">("loading");
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+
+        if (params.has("id") || params.has("new")) {
+            setView("editor");
+            return;
+        }
+
+        const encoded = params.get("data");
+        if (encoded) {
+            // Decode LZ-string compressed diagram code
+            const code = LZString.decompressFromEncodedURIComponent(encoded) ?? "";
+            const stripped = (() => {
+                const lines = code.split("\n");
+                if (lines[0]?.trim() !== "---") return code;
+                const end = lines.findIndex((l, i) => i > 0 && l.trim() === "---");
+                return end === -1 ? code : lines.slice(end + 1).join("\n").trimStart();
+            })();
+
+            if (!stripped || !/^sequenceDiagram/im.test(stripped)) {
+                setView("index");
+                setTimeout(() => showToast(
+                    stripped ? "Only sequence diagrams are supported" : "Could not decode ?data= link",
+                    { color: "#f59e0b" }
+                ), 200);
+                return;
+            }
+
+            // Valid sequence diagram — save it and open in editor
+            const titleMatch = code.match(/^\s*(?:title|accTitle):?\s+(.+)$/im);
+            const title = titleMatch?.[1]?.trim() || "Untitled";
+            const diagramType = "sequence";
+
+            fetch("/api/diagrams", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, code, diagramType }),
+            })
+                .then(r => r.ok ? r.json() : null)
+                .then(d => {
+                    const id = d?.id;
+                    window.location.replace(id ? `/?id=${id}&imported=1` : `/?new`);
+                })
+                .catch(() => window.location.replace("/?new"));
+            return; // stay on loading while fetch runs
+        }
+
+        setView("index");
+    }, []);
+
+    if (view === "loading") return null;
+    if (view === "index") return <DiagramsShell />;
+    return <DiagramEditor />;
+}
+
+// ── Editor ────────────────────────────────────────────────────────────────────
+function DiagramEditor() {
     const [supabaseUser, setSupabaseUser] = useState<{ id: string; email?: string; user_metadata?: Record<string,string> } | null>(null);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -1076,14 +951,13 @@ export default function SequenceTool() {
     const [copied, setCopied] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedShare, setCopiedShare] = useState(false);
+    const [diagramLoading, setDiagramLoading] = useState(false);
     const [hasFit, setHasFit] = useState(false);
     const [fitActive, setFitActive] = useState(true);
     const fitActiveRef = useRef(true);
     const [opts, setOpts] = useState<Opts>(DEFAULT_OPTS);
     const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
     const [zoom, setZoom] = useState(1.0);
-    const [mermaidSvg, setMermaidSvg] = useState<string>("");
-    const [renderError, setRenderError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState(false);
     const [hoverScreenY, setHoverScreenY] = useState<number | null>(null);
     const [lanIp, setLanIp] = useState<string | null>(null);
@@ -1185,7 +1059,7 @@ export default function SequenceTool() {
                 const rect = el.getBoundingClientRect();
                 const dx = e.clientX - (rect.left + rect.width / 2);
                 const dy = e.clientY - (rect.top + rect.height / 2);
-                const speed = e.deltaMode === 1 ? 0.018 : 0.0012;
+                const speed = e.deltaMode === 1 ? 0.036 : 0.0024;
                 const oldZoom = zoomRef.current;
                 const newZoom = parseFloat(Math.min(4, Math.max(0.1, oldZoom - e.deltaY * speed * oldZoom)).toFixed(3));
                 const ratio = newZoom / oldZoom;
@@ -1329,16 +1203,32 @@ export default function SequenceTool() {
         try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l!) })); } catch {}
 
         const urlId = params.get("id");
+        const isImported = params.get("imported") === "1";
         if (urlId) setSavedDiagramId(urlId);
 
         // Wait for auth session, then fetch diagram (RLS requires auth for owner-scoped reads)
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) setSupabaseUser(data.session.user);
-            if (urlId) {
-                supabase.from("diagrams").select("code").eq("id", urlId).single()
-                    .then(({ data: d }) => { if (d?.code) setCode(d.code); });
-            }
-        });
+        if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV === "true") {
+            // Dev bypass: use server API route (admin client, no RLS, works from LAN IP)
+            setDiagramLoading(true);
+            fetch(`/api/diagrams/${urlId}`).then(r => r.json()).then(d => {
+                if (d?.code) setCode(d.code);
+                setDiagramLoading(false);
+                if (isImported) setTimeout(fireConfetti, 300);
+            }).catch(() => setDiagramLoading(false));
+        } else {
+            supabase.auth.getSession().then(({ data }) => {
+                if (data.session) setSupabaseUser(data.session.user);
+                if (urlId) {
+                    setDiagramLoading(true);
+                    void supabase.from("diagrams").select("code").eq("id", urlId).single()
+                        .then(({ data: d }) => {
+                            if (d?.code) setCode(d.code);
+                            setDiagramLoading(false);
+                            if (isImported) setTimeout(fireConfetti, 300);
+                        });
+                }
+            });
+        }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSupabaseUser(session?.user ?? null);
@@ -1368,44 +1258,6 @@ export default function SequenceTool() {
     useEffect(() => { if (mounted) localStorage.setItem("nsd-opts", JSON.stringify(opts)); }, [opts, mounted]);
     useEffect(() => { if (mounted) localStorage.setItem("nsd-layout", JSON.stringify(layout)); }, [layout, mounted]);
 
-    // ── Mermaid rendering for non-sequence diagrams ───────────────────────
-    useEffect(() => {
-        if (!mounted || isSequence || !code.trim()) { setMermaidSvg(""); setRenderError(null); return; }
-        let cancelled = false;
-        const currentType = detectDiagramType(code);
-        import("mermaid").then(async ({ default: mermaid }) => {
-            mermaid.initialize({
-                startOnLoad: false,
-                theme: "base",
-                themeVariables: {
-                    background: THEMES[opts.theme]?.bg ?? "#ffffff",
-                    primaryColor: PAL[0],
-                    primaryTextColor: "#ffffff",
-                    primaryBorderColor: "transparent",
-                    lineColor: "#64748b",
-                    fontFamily: "'Inter', sans-serif",
-                    edgeLabelBackground: "transparent",
-                    clusterBkg: "transparent",
-                },
-                securityLevel: "loose",
-            });
-            const stripped = stripFrontmatter(code);
-            // architecture-beta: ESM bundle doesn't support `end` keyword for groups,
-            // and rejects dots inside [...] labels — sanitize both
-            const sanitized = currentType === "architecture"
-                ? stripped
-                    .split("\n").filter(l => l.trim() !== "end").join("\n")
-                    .replace(/\[([^\]]*)\]/g, (_, inner) => `[${inner.replace(/\./g, "")}]`)
-                : stripped;
-            mermaid.render("mermaid-svg-" + Date.now(), sanitized).then(({ svg: renderedSvg }) => {
-                if (!cancelled) { setMermaidSvg(applyColorfulMermaidStyle(renderedSvg, opts, currentType)); setRenderError(null); }
-            }).catch((err) => {
-                console.error("[mermaid render error]", err);
-                if (!cancelled) { setMermaidSvg(""); setRenderError(String(err?.message ?? err ?? "Parse error")); }
-            });
-        });
-        return () => { cancelled = true; };
-    }, [code, opts.theme, mounted, isSequence]);
 
     const diagram = useMemo(() => code.trim() ? parse(code) : parse("sequenceDiagram"), [code]);
 
@@ -1444,7 +1296,7 @@ export default function SequenceTool() {
 
     const svg = useMemo(() => buildSvg(diagram, opts, computedLayout), [diagram, opts, computedLayout]);
 
-    const activeSvg = isSequence ? svg : mermaidSvg;
+    const activeSvg = svg;
 
     const svgDims = useMemo(() => {
         if (!activeSvg) return null;
@@ -1518,6 +1370,7 @@ export default function SequenceTool() {
             if (tag === "TEXTAREA" || tag === "INPUT") return;
             const mod = e.metaKey || e.ctrlKey;
             if (mod && e.key === "0") { e.preventDefault(); fitZoom(); }
+            if (mod && e.key === "z" && !e.shiftKey) { const prev = undoStack.current.pop(); if (prev) { e.preventDefault(); setOpts(prev); } }
             if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); const nz = parseFloat(Math.min(4, zoomRef.current * 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }
             if (mod && e.key === "-") { e.preventDefault(); const nz = parseFloat(Math.max(0.1, zoomRef.current / 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }
             if (e.key === "f" || e.key === "F") fitZoom();
@@ -1531,7 +1384,12 @@ export default function SequenceTool() {
         return () => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); };
     }, [mounted, fitZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const upd = (p: Partial<Opts>) => setOpts(o => ({ ...o, ...p }));
+    const undoStack = useRef<Opts[]>([]);
+    const upd = (p: Partial<Opts>) => setOpts(o => {
+        undoStack.current.push(o);
+        if (undoStack.current.length > 50) undoStack.current.shift();
+        return { ...o, ...p };
+    });
     const updL = (p: Partial<Layout>) => setLayout(l => ({ ...l, ...p }));
 
     // ── Exports ───────────────────────────────────────────────────────────
@@ -1567,11 +1425,10 @@ export default function SequenceTool() {
     }, [code]);
 
     const exportJson = useCallback(() => {
-        const data = isSequence ? diagram : { type: diagramType, code };
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(diagram, null, 2)], { type: "application/json" }));
         a.download = exportFilename("json"); a.click();
-    }, [diagram, isSequence, diagramType, code]);
+    }, [diagram]);
 
     const copyCode = useCallback(() => {
         navigator.clipboard.writeText(code).then(() => {
@@ -1652,7 +1509,7 @@ export default function SequenceTool() {
         const url = buildShareUrl();
         if (!url) { showToast("Paste a diagram first to share", { color: "#f59e0b" }); return; }
         if (navigator.share) {
-            navigator.share({ title: "Mermaid++ Diagram", url }).catch(() => {});
+            navigator.share({ title: "Diagram", url }).catch(() => {});
         } else {
             navigator.clipboard.writeText(url).then(() => {
                 setCopiedShare(true);
@@ -1685,20 +1542,26 @@ export default function SequenceTool() {
         const parsed = parse(pasted);
         if (parsed.participants.length >= 2) setTimeout(fireConfetti, 150);
         setTimeout(fitZoom, 120);
-        // Don't save here — onGlobalPaste (capture phase) already handles mermaid saves
+        // Don't save here — onGlobalPaste (capture phase) already handles diagram saves
     }, [fireConfetti, fitZoom]);
 
-    // ── Global paste listener — always intercepts mermaid, creates new record ──
+    // ── Global paste listener — always intercepts sequence diagrams, creates new record ──
     useEffect(() => {
         const onGlobalPaste = (e: ClipboardEvent) => {
             const pasted = e.clipboardData?.getData("text") ?? "";
             if (!pasted.trim()) return;
-            const looksLikeMermaid = /^(sequenceDiagram|flowchart|graph\s|classDiagram|erDiagram|gantt|pie|mindmap|gitGraph|journey)/im.test(pasted.trim());
-            if (!looksLikeMermaid) return;
-            // Always intercept mermaid — prevent textarea from inserting raw text
+            const looksLikeSequence = /^sequenceDiagram/im.test(stripFrontmatter(pasted));
+            const looksLikeDiagram = /^(sequenceDiagram|flowchart|graph\s|classDiagram|erDiagram|gantt|pie|mindmap|gitGraph|journey)/im.test(stripFrontmatter(pasted));
+            if (!looksLikeSequence) {
+                const tag = (e.target as HTMLElement)?.tagName;
+                if (tag !== "TEXTAREA" && tag !== "INPUT") showToast(looksLikeDiagram ? "Only sequence diagrams supported" : "Not a diagram", { color: "#ef4444" });
+                return;
+            }
+            // Always intercept — prevent textarea from inserting raw text
             e.preventDefault();
             setCode(pasted);
             setSavedDiagramId(null);
+            showToast("Diagram loaded ✓", { color: "#7c3aed" });
             const parsed = parse(pasted);
             if (parsed.participants.length >= 2) setTimeout(fireConfetti, 150);
             setTimeout(fitZoom, 120);
@@ -1837,7 +1700,7 @@ export default function SequenceTool() {
                         const ox = e.clientX - (rect.left + rect.width / 2);
                         const oy = e.clientY - (rect.top + rect.height / 2);
                         // 10x smoother: speed-based instead of fixed multiplier
-                        const speed = e.deltaMode === 1 ? 0.018 : 0.0012;
+                        const speed = e.deltaMode === 1 ? 0.036 : 0.0024;
                         const oldZoom = zoomRef.current;
                         const newZoom = parseFloat(Math.min(4, Math.max(0.2, oldZoom - e.deltaY * speed * oldZoom)).toFixed(4));
                         const ratio = newZoom / oldZoom;
@@ -1897,6 +1760,52 @@ export default function SequenceTool() {
     return (
         <div className="h-screen w-screen flex flex-col overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
             <CuteToast />
+
+            {/* ── Diagram loading overlay ── */}
+            {diagramLoading && (
+                <div style={{
+                    position: "fixed", inset: 0, zIndex: 999,
+                    background: "rgba(10,10,20,0.82)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    backdropFilter: "blur(6px)",
+                }}>
+                    <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {/* outer slow pulse ring */}
+                        <div style={{
+                            position: "absolute", width: 120, height: 120, borderRadius: "50%",
+                            background: "radial-gradient(circle, rgba(124,58,237,0.25) 0%, transparent 70%)",
+                            animation: "ldPulse 2s ease-in-out infinite",
+                        }} />
+                        {/* mid ring */}
+                        <div style={{
+                            position: "absolute", width: 72, height: 72, borderRadius: "50%",
+                            border: "1.5px solid rgba(139,92,246,0.4)",
+                            animation: "ldSpin 3s linear infinite",
+                        }} />
+                        {/* inner spinning arc */}
+                        <svg width={52} height={52} viewBox="0 0 52 52" style={{ animation: "ldSpinR 1.1s linear infinite" }}>
+                            <circle cx={26} cy={26} r={22} fill="none" stroke="url(#ldGrad)" strokeWidth={3} strokeLinecap="round" strokeDasharray="60 80" />
+                            <defs>
+                                <linearGradient id="ldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#7c3aed" />
+                                    <stop offset="100%" stopColor="#a78bfa" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        {/* center dot */}
+                        <div style={{
+                            position: "absolute", width: 8, height: 8, borderRadius: "50%",
+                            background: "radial-gradient(circle, #c4b5fd, #7c3aed)",
+                            boxShadow: "0 0 12px 4px rgba(124,58,237,0.7)",
+                        }} />
+                    </div>
+                    <style>{`
+                        @keyframes ldPulse { 0%,100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.35); opacity: 1; } }
+                        @keyframes ldSpin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                        @keyframes ldSpinR { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+                    `}</style>
+                </div>
+            )}
             <style>{`
                 ${opts.theme === "light" ? `
                 .token.comment     { color: #6e7781; font-style: italic; }
@@ -1941,7 +1850,7 @@ export default function SequenceTool() {
 
                 {/* Back — ideas-style floating pill */}
                 <button
-                    onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/gallery")}
+                    onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/")}
                     style={{
                         width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                         border: `1px solid ${ut.headerBorder}`,
@@ -2086,6 +1995,7 @@ export default function SequenceTool() {
                         style={{ cursor: isPanning ? "grabbing" : "grab", touchAction: "none" }}
                         onMouseDown={e => {
                             if ((e.target as HTMLElement).closest("button,#diagram-title")) return;
+                            if (opts.autoLayout) upd({ autoLayout: false });
                             isDragging.current = true;
                             setIsPanning(true);
                             dragStartMouse.current = { x: e.clientX, y: e.clientY };
@@ -2109,33 +2019,6 @@ export default function SequenceTool() {
                                 }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
-                        ) : mounted && renderError && !isSequence ? (
-                            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", maxWidth: "80%", textAlign: "center" }}>
-                                <div style={{ position: "relative", color: "#f87171", fontSize: 12, fontFamily: "monospace", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "12px 16px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                                    <span style={{ display: "block", fontWeight: 700, marginBottom: 6 }}>Parse Error</span>
-                                    {renderError}
-                                    <button
-                                        onClick={() => {
-                                            const txt = renderError ?? "";
-                                            if (navigator.clipboard) {
-                                                navigator.clipboard.writeText(txt).catch(() => {
-                                                    const ta = document.createElement("textarea");
-                                                    ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
-                                                });
-                                            } else {
-                                                const ta = document.createElement("textarea");
-                                                ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
-                                            }
-                                        }}
-                                        title="Copy error"
-                                        style={{ position: "absolute", top: 8, right: 8, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 5, color: "#f87171", cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: "2px 7px", lineHeight: 1.6 }}
-                                    >copy</button>
-                                </div>
-                            </div>
-                        ) : mounted && !activeSvg && !isSequence ? (
-                            <div style={{ color: ut.zoomMuted, position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}>
-                                Rendering…
-                            </div>
                         ) : (
                             <div className="flex items-center justify-center h-full">
                                 {mounted && (

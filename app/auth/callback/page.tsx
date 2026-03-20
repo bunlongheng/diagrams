@@ -9,7 +9,7 @@ export default function AuthCallbackPage() {
     // Just wait for SIGNED_IN and redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
-        window.location.replace("/gallery");
+        window.location.replace("/");
       }
     });
     return () => subscription.unsubscribe();

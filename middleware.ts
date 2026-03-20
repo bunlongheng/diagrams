@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function middleware(req: NextRequest) {
+  // Skip auth entirely on local dev
+  if (process.env.LOCAL_DEV === "true") return NextResponse.next();
+
   const res = NextResponse.next({ request: req });
 
   const supabase = createServerClient(

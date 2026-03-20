@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: "Mermaid++",
-        short_name: "Mermaid++",
-        description: "Beautiful sequence diagram generator — paste any mermaid syntax and get a polished visual instantly.",
+        name: "Diagrams",
+        short_name: "Diagrams",
+        description: "Beautiful diagram generator — paste any diagram syntax and get a polished visual instantly.",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
