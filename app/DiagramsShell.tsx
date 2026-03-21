@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import DiagramsClient from "./DiagramsClient";
-import SignInButton from "./SignInButton";
+import LoginForm from "./SignInButton";
 import { CuteToast } from "@/app/CuteToast";
 
 type Diagram = {
@@ -11,31 +11,21 @@ type Diagram = {
   diagram_type: string; created_at: string; code: string;
 };
 
-const DEV_USER = { id: "dev-local", email: "dev@localhost", user_metadata: { full_name: "Dev" } } as unknown as User;
-const IS_DEV = process.env.NEXT_PUBLIC_LOCAL_DEV === "true";
-
 export default function DiagramsShell() {
-  const [user, setUser] = useState<User | null | "loading">(IS_DEV ? DEV_USER : "loading");
+  const [user, setUser] = useState<User | null | "loading">("loading");
   const [diagrams, setDiagrams] = useState<Diagram[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
 
-    async function fetchDiagrams() {
-      if (IS_DEV) {
-        const res = await fetch("/api/diagrams");
-        const body = await res.json();
-        setDiagrams(Array.isArray(body) ? body : []);
-        return;
-      }
+    async function fetchDiagrams(u: User) {
       const { data } = await supabase
         .from("diagrams")
         .select("id, title, slug, diagram_type, created_at, code")
+        .eq("user_id", u.id)
         .order("created_at", { ascending: false });
       if (data) setDiagrams(data);
     }
-
-    if (IS_DEV) { fetchDiagrams(); return; }
 
     const allowed = process.env.NEXT_PUBLIC_ALLOWED_EMAIL;
 
@@ -46,7 +36,7 @@ export default function DiagramsShell() {
         setUser(null);
       } else {
         setUser(prev => (prev && typeof prev !== "string" && u && prev.id === u.id ? prev : u ?? null));
-        if (u && (event === "INITIAL_SESSION" || event === "SIGNED_IN")) fetchDiagrams();
+        if (u && (event === "INITIAL_SESSION" || event === "SIGNED_IN")) fetchDiagrams(u);
         if (event === "SIGNED_OUT") setDiagrams([]);
       }
     });
@@ -54,8 +44,7 @@ export default function DiagramsShell() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Loading spinner (never on dev)
-  if (!IS_DEV && user === "loading") {
+  if (user === "loading") {
     return (
       <div style={{ minHeight: "100vh", background: "#0f1022", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 36, height: 36, border: "3px solid #e5e7eb", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
@@ -64,8 +53,7 @@ export default function DiagramsShell() {
     );
   }
 
-  // Not signed in (never on dev)
-  if (!IS_DEV && !user) {
+  if (!user) {
     return (
       <div style={{ minHeight: "100vh", background: "#0f1022", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui,-apple-system,sans-serif" }}>
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -87,7 +75,7 @@ export default function DiagramsShell() {
           </svg>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "#e8eaf8", margin: 0 }}>Diagrams</h1>
           <p style={{ fontSize: 14, color: "#5a5c7a", margin: 0 }}>Sign in to view your saved diagrams</p>
-          <SignInButton />
+          <LoginForm />
           <a href="/?new" style={{ fontSize: 13, color: "#9ca3af", textDecoration: "none", marginTop: 4 }}>← Open editor</a>
         </div>
       </div>

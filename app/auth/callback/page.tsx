@@ -5,10 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 export default function AuthCallbackPage() {
   useEffect(() => {
     const supabase = createClient();
-    // createBrowserClient auto-detects ?code= and exchanges it (detectSessionInUrl: true)
-    // Just wait for SIGNED_IN and redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
+      if (event === "PASSWORD_RECOVERY") {
+        window.location.replace("/auth/update-password");
+      } else if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
         window.location.replace("/");
       }
     });
@@ -16,7 +16,7 @@ export default function AuthCallbackPage() {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ minHeight: "100vh", background: "#0f1022", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
         <div style={{ width: 40, height: 40, border: "3px solid #e5e7eb", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
