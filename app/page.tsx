@@ -1782,9 +1782,9 @@ function DiagramEditor() {
             {diagramLoading && (
                 <div style={{
                     position: "fixed", inset: 0, zIndex: 999,
-                    background: "rgba(8,8,18,0.88)",
+                    background: "rgba(8,8,18,0.55)",
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18,
-                    backdropFilter: "blur(8px)",
+                    backdropFilter: "blur(3px)",
                 }}>
                     <style>{`
                         /* total loop: 5s */
@@ -1889,58 +1889,58 @@ function DiagramEditor() {
                     {/* ── animated sequence diagram ── */}
                     <svg width={300} height={190} viewBox="0 0 300 190" style={{ filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.6))" }}>
                         {/* ─ participant boxes top ─ */}
-                        <g style={{ transformOrigin: "50px 14px", animation: "sdB1 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <g style={{ transformOrigin: "50px 14px", animation: "sdB1 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={10} y={1} width={80} height={26} rx={7} fill="#fb7185"/>
                             <text x={50} y={14} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={9} fontWeight={700} fill="white">Client</text>
                         </g>
-                        <g style={{ transformOrigin: "150px 14px", animation: "sdB2 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <g style={{ transformOrigin: "150px 14px", animation: "sdB2 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={110} y={1} width={80} height={26} rx={7} fill="#a78bfa"/>
                             <text x={150} y={14} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={9} fontWeight={700} fill="white">API</text>
                         </g>
-                        <g style={{ transformOrigin: "250px 14px", animation: "sdB3 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <g style={{ transformOrigin: "250px 14px", animation: "sdB3 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={210} y={1} width={80} height={26} rx={7} fill="#34d399"/>
                             <text x={250} y={14} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={9} fontWeight={700} fill="white">DB</text>
                         </g>
 
                         {/* ─ lifelines ─ */}
-                        <line x1={50}  y1={27} x2={50}  y2={168} stroke="#fb7185" strokeWidth={1.5} strokeOpacity={0.4} strokeDasharray="145" style={{ animation: "sdLL 5s ease-out infinite" }}/>
-                        <line x1={150} y1={27} x2={150} y2={168} stroke="#a78bfa" strokeWidth={1.5} strokeOpacity={0.4} strokeDasharray="145" style={{ animation: "sdLL 5s ease-out 0.05s infinite" }}/>
-                        <line x1={250} y1={27} x2={250} y2={168} stroke="#34d399" strokeWidth={1.5} strokeOpacity={0.4} strokeDasharray="145" style={{ animation: "sdLL 5s ease-out 0.1s infinite" }}/>
+                        <line x1={50}  y1={27} x2={50}  y2={168} stroke="#fb7185" strokeWidth={1.5} strokeOpacity={0.4} strokeDasharray="145" style={{ animation: "sdLL 2.5s ease-out infinite" }}/>
+                        <line x1={150} y1={27} x2={150} y2={168} stroke="#a78bfa" strokeWidth={1.5} strokeOpacity={0.4} strokeDasharray="145" style={{ animation: "sdLL 2.5s ease-out 0.025s infinite" }}/>
+                        <line x1={250} y1={27} x2={250} y2={168} stroke="#34d399" strokeWidth={1.5} strokeOpacity={0.4} strokeDasharray="145" style={{ animation: "sdLL 2.5s ease-out 0.05s infinite" }}/>
 
                         {/* ─ Arrow 1: Client→API (amber) ─ */}
-                        <line x1={50} y1={65} x2={140} y2={65} stroke="#fbbf24" strokeWidth={2} strokeDasharray="96" style={{ animation: "sdA1 5s ease-out infinite" }}/>
-                        <polygon points="144,65 134,60 134,70" fill="#fbbf24" style={{ animation: "sdP1 5s ease-out infinite", transformOrigin: "144px 65px" }}/>
-                        <g style={{ transformOrigin: "95px 65px", animation: "sdP1 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <line x1={50} y1={65} x2={140} y2={65} stroke="#fbbf24" strokeWidth={2} strokeDasharray="96" style={{ animation: "sdA1 2.5s ease-out infinite" }}/>
+                        <polygon points="144,65 134,60 134,70" fill="#fbbf24" style={{ animation: "sdP1 2.5s ease-out infinite", transformOrigin: "144px 65px" }}/>
+                        <g style={{ transformOrigin: "95px 65px", animation: "sdP1 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={57} y={57} width={76} height={16} rx={8} fill="#fbbf24"/>
                             <text x={95} y={65} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={8} fontWeight={700} fill="#000">POST /data</text>
                         </g>
 
                         {/* ─ Arrow 2: API→DB (sky) ─ */}
-                        <line x1={150} y1={100} x2={240} y2={100} stroke="#38bdf8" strokeWidth={2} strokeDasharray="96" style={{ animation: "sdA2 5s ease-out infinite" }}/>
-                        <polygon points="244,100 234,95 234,105" fill="#38bdf8" style={{ animation: "sdP2 5s ease-out infinite", transformOrigin: "244px 100px" }}/>
-                        <g style={{ transformOrigin: "197px 100px", animation: "sdP2 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <line x1={150} y1={100} x2={240} y2={100} stroke="#38bdf8" strokeWidth={2} strokeDasharray="96" style={{ animation: "sdA2 2.5s ease-out infinite" }}/>
+                        <polygon points="244,100 234,95 234,105" fill="#38bdf8" style={{ animation: "sdP2 2.5s ease-out infinite", transformOrigin: "244px 100px" }}/>
+                        <g style={{ transformOrigin: "197px 100px", animation: "sdP2 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={159} y={92} width={76} height={16} rx={8} fill="#38bdf8"/>
                             <text x={197} y={100} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={8} fontWeight={700} fill="#000">INSERT row</text>
                         </g>
 
                         {/* ─ Arrow 3: DB→API return dashed (teal) ─ */}
-                        <line x1={240} y1={128} x2={160} y2={128} stroke="#34d399" strokeWidth={1.5} strokeDasharray="5 4" style={{ animation: "sdA3 5s ease-out infinite" }}/>
-                        <polygon points="156,128 166,123 166,133" fill="#34d399" style={{ animation: "sdA3 5s ease-out infinite" }}/>
-                        <g style={{ transformOrigin: "200px 128px", animation: "sdP3 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <line x1={240} y1={128} x2={160} y2={128} stroke="#34d399" strokeWidth={1.5} strokeDasharray="5 4" style={{ animation: "sdA3 2.5s ease-out infinite" }}/>
+                        <polygon points="156,128 166,123 166,133" fill="#34d399" style={{ animation: "sdA3 2.5s ease-out infinite" }}/>
+                        <g style={{ transformOrigin: "200px 128px", animation: "sdP3 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={162} y={120} width={76} height={16} rx={8} fill="#34d399" fillOpacity={0.85}/>
                             <text x={200} y={128} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={8} fontWeight={700} fill="#000">201 created</text>
                         </g>
 
                         {/* ─ Arrow 4: API→Client return dashed (violet) ─ */}
-                        <line x1={140} y1={155} x2={60} y2={155} stroke="#a78bfa" strokeWidth={1.5} strokeDasharray="5 4" style={{ animation: "sdA4 5s ease-out infinite" }}/>
-                        <polygon points="56,155 66,150 66,160" fill="#a78bfa" style={{ animation: "sdA4 5s ease-out infinite" }}/>
-                        <g style={{ transformOrigin: "100px 155px", animation: "sdP4 5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
+                        <line x1={140} y1={155} x2={60} y2={155} stroke="#a78bfa" strokeWidth={1.5} strokeDasharray="5 4" style={{ animation: "sdA4 2.5s ease-out infinite" }}/>
+                        <polygon points="56,155 66,150 66,160" fill="#a78bfa" style={{ animation: "sdA4 2.5s ease-out infinite" }}/>
+                        <g style={{ transformOrigin: "100px 155px", animation: "sdP4 2.5s cubic-bezier(0.34,1.56,0.64,1) infinite" }}>
                             <rect x={62} y={147} width={76} height={16} rx={8} fill="#a78bfa" fillOpacity={0.85}/>
                             <text x={100} y={155} textAnchor="middle" dominantBaseline="middle" fontFamily="Inter,system-ui,sans-serif" fontSize={8} fontWeight={700} fill="#000">200 ok ✓</text>
                         </g>
 
                         {/* ─ participant boxes bottom ─ */}
-                        <g style={{ animation: "sdBBot 5s ease-out infinite" }}>
+                        <g style={{ animation: "sdBBot 2.5s ease-out infinite" }}>
                             <rect x={10}  y={170} width={80} height={18} rx={5} fill="#fb7185" fillOpacity={0.7}/>
                             <rect x={110} y={170} width={80} height={18} rx={5} fill="#a78bfa" fillOpacity={0.7}/>
                             <rect x={210} y={170} width={80} height={18} rx={5} fill="#34d399" fillOpacity={0.7}/>
@@ -1948,7 +1948,7 @@ function DiagramEditor() {
                     </svg>
 
                     {/* label */}
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "rgba(180,185,220,0.8)", letterSpacing: "0.04em", animation: "sdLbl 5s ease-out infinite" }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "rgba(180,185,220,0.8)", letterSpacing: "0.04em", animation: "sdLbl 2.5s ease-out infinite" }}>
                         Building diagram…
                     </p>
                 </div>
