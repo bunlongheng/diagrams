@@ -42,6 +42,7 @@ export default function LoginForm() {
       "Let's make something great.",
     ];
     showToast(greetings[Math.floor(Math.random() * greetings.length)]);
+    setTimeout(() => window.location.reload(), 800);
   }
 
   async function sendReset() {
