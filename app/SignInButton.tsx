@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { showToast } from "@/app/CuteToast";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -9,6 +10,7 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 8,
@@ -63,10 +65,19 @@ export default function LoginForm() {
         type="email" placeholder="Email" value={email} required autoComplete="email"
         onChange={e => setEmail(e.target.value)} style={inputStyle}
       />
-      <input
-        type="password" placeholder="Password" value={password} required autoComplete="current-password"
-        onChange={e => setPassword(e.target.value)} style={inputStyle}
-      />
+      <div style={{ position: "relative" }}>
+        <input
+          type={showPw ? "text" : "password"} placeholder="Password" value={password} required autoComplete="current-password"
+          onChange={e => setPassword(e.target.value)} style={{ ...inputStyle, paddingRight: 38 }}
+        />
+        <button type="button" onClick={() => setShowPw(v => !v)} style={{
+          position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+          background: "none", border: "none", cursor: "pointer", padding: 0, color: "#6b7280",
+          display: "flex", alignItems: "center",
+        }}>
+          {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
       {error && <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{error}</p>}
       <button type="submit" disabled={loading} style={{
         padding: "10px 0", fontSize: 14, fontWeight: 600, borderRadius: 8,
