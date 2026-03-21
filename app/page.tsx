@@ -1226,7 +1226,7 @@ function DiagramEditor() {
                     if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
                 }
                 setDiagramLoading(false);
-                setTimeout(fireConfetti, 400);
+                if (isImported) setTimeout(fireConfetti, 400);
             }).catch(() => setDiagramLoading(false));
         } else {
             supabase.auth.getSession().then(({ data }) => {
@@ -1241,7 +1241,7 @@ function DiagramEditor() {
                                 if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
                             }
                             setDiagramLoading(false);
-                            setTimeout(fireConfetti, 400);
+                            if (isImported) setTimeout(fireConfetti, 400);
                         });
                 }
             });

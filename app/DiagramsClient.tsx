@@ -498,6 +498,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
       const looksLikeSequence = /^sequenceDiagram/im.test(body);
       if (!looksLikeSequence) return;
       e.preventDefault();
+      showToast("Diagram detected — opening editor…", { color: "#7c3aed" });
 
       const titleMatch = pasted.match(/^\s*(?:title|accTitle):?\s+(.+)$/im);
       const title = titleMatch ? titleMatch[1].trim() : "Untitled";
@@ -517,7 +518,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
         }
       } catch { /* navigate anyway */ }
 
-      window.location.href = savedId ? `/?id=${savedId}` : `/?new`;
+      window.location.href = savedId ? `/?id=${savedId}&imported=1` : `/?new`;
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
