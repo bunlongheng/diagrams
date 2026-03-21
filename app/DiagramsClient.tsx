@@ -6,7 +6,7 @@ import type { User } from "@supabase/supabase-js";
 
 type Diagram = {
   id: string; title: string; slug: string;
-  diagram_type: string; created_at: string; code: string;
+  diagram_type: string; created_at: string; updated_at: string; code: string;
 };
 
 // ── Favorites ─────────────────────────────────────────────────────────────────
@@ -582,8 +582,9 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     ? diagrams.filter(d => d.title.toLowerCase().includes(search.toLowerCase()) || d.diagram_type.toLowerCase().includes(search.toLowerCase()))
     : diagrams;
 
-  const favDiagrams = filtered.filter(d => favs.has(d.id));
-  const recentDiagrams = filtered.filter(d => !favs.has(d.id));
+  const byUpdated = (a: Diagram, b: Diagram) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at);
+  const favDiagrams = filtered.filter(d => favs.has(d.id)).sort(byUpdated);
+  const recentDiagrams = filtered.filter(d => !favs.has(d.id)).sort(byUpdated);
 
   const cardProps = (d: Diagram) => ({
     d, isFav: favs.has(d.id),

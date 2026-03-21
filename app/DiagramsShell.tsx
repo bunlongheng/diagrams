@@ -7,7 +7,7 @@ import LoginForm from "./SignInButton";
 
 type Diagram = {
   id: string; title: string; slug: string;
-  diagram_type: string; created_at: string; code: string;
+  diagram_type: string; created_at: string; updated_at: string; code: string;
 };
 
 export default function DiagramsShell() {
@@ -22,9 +22,9 @@ export default function DiagramsShell() {
     async function fetchDiagrams(u: User) {
       const { data } = await supabase
         .from("diagrams")
-        .select("id, title, slug, diagram_type, created_at, code")
+        .select("id, title, slug, diagram_type, created_at, updated_at, code")
         .eq("user_id", u.id)
-        .order("created_at", { ascending: false });
+        .order("updated_at", { ascending: false });
       if (data) setDiagrams(data);
     }
 
