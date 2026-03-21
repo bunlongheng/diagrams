@@ -54,10 +54,15 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   })();
   const rawLines = stripped.split("\n");
   const lines = rawLines.map(l => l.trim()).filter(l => l && !l.startsWith("%%"));
+  // Always detect type from code — stored diagram_type in DB can be stale
+  const firstLine = lines.find(l => l.length > 0) ?? "";
+  const detectedType = /^sequenceDiagram/i.test(firstLine) ? "sequence"
+    : /^(flowchart|graph)\s/i.test(firstLine) ? "flowchart"
+    : type;
   const svgStyle: React.CSSProperties = { display: "block", background: "#1a1b2e", borderRadius: 8 };
 
   // ── Sequence — show ALL participants, exact colors matching editor ───────────
-  if (type === "sequence") {
+  if (detectedType === "sequence") {
     const seen = new Map<string, string>();
     for (const line of lines) {
       const asM = line.match(/^(?:participant|actor)\s+(\S+)\s+as\s+(.+)$/i);
@@ -67,7 +72,7 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
     }
     if (seen.size === 0) {
       for (const line of lines) {
-        const m = line.match(/^(\w+)\s*(?:-->>|->>|-->|->)\s*(\w+)\s*:/);
+        const m = line.match(/^(\S+)\s*(?:-->>|->>|-->|-x|->)\s*(\S+)\s*:/);
         if (m) { if (!seen.has(m[1])) seen.set(m[1], m[1].slice(0, 4)); if (!seen.has(m[2])) seen.set(m[2], m[2].slice(0, 4)); }
       }
     }
@@ -88,8 +93,8 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
     const numSize = Math.max(5, Math.min(8, BOX_W * 0.55));
     const msgs: { fi: number; ti: number }[] = [];
     for (const line of lines) {
-      const m = line.match(/^(\w+)\s*(?:-->>|->>|-->|->)\s*(\w+)\s*:/);
-      if (m) { const fi = participants.indexOf(m[1]), ti = participants.indexOf(m[3]); if (fi >= 0 && ti >= 0 && fi !== ti) msgs.push({ fi, ti }); }
+      const m = line.match(/^(\S+)\s*(?:-->>|->>|-->|-x|->)\s*(\S+)\s*:/);
+      if (m) { const fi = participants.indexOf(m[1]), ti = participants.indexOf(m[2]); if (fi >= 0 && ti >= 0 && fi !== ti) msgs.push({ fi, ti }); }
     }
     const maxM = Math.min(msgs.length, 8);
     const msgGap = maxM > 0 ? (LIFE_BOT - LIFE_TOP - 4) / maxM : 0;
@@ -142,7 +147,7 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   }
 
   // ── Flowchart / Graph ────────────────────────────────────────────────────────
-  if (type === "flowchart" || type === "graph") {
+  if (detectedType === "flowchart" || detectedType === "graph") {
     const nodeMap = new Map<string, string>();
     const edgeList: [string, string][] = [];
     for (const line of lines) {
