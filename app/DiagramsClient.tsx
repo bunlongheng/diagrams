@@ -588,7 +588,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     }
     showToast("Deleted ✓", { color: "#64748b" });
     setDiagrams(prev => prev.filter(d => d.id !== id));
-    setFavs(prev => { const next = new Set(prev); next.delete(id); saveFavs(next); return next; });
+    setFavs(prev => { const next = new Set(prev); next.delete(id); return next; });
     setDeleting(null);
   }
 
