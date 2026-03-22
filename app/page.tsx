@@ -1008,7 +1008,7 @@ function DiagramEditor() {
             ? code.replace(/^title:?\s+.+$/im, `title: ${t}`)
             : code.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1title: ${t}\n`);
         setCode(newCode);
-        showToast(t, { color: "#7c3aed" });
+        showToast(`Title saved`, { color: "#7c3aed" });
         if (savedDiagramId && supabaseUser) {
             const supabase = createClient();
             supabase.from("diagrams").update({ title: t, code: newCode }).eq("id", savedDiagramId).then(({ error }) => {
