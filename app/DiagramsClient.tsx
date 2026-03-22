@@ -565,7 +565,6 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     const msg = farewells[Math.floor(Math.random() * farewells.length)];
     createClient().auth.signOut().then(() => {
       localStorage.removeItem(LS_KEY);
-      localStorage.removeItem(LS_FAVS);
       showToast(msg);
       setTimeout(() => window.location.reload(), 1800);
     });
