@@ -194,7 +194,7 @@ function parse(code: string): Diagram {
     let title: string | undefined;
     function addP(id: string, label?: string) {
         if (!map.has(id)) {
-            const p: Participant = { id, color: PAL[ci++ % PAL.length], label: (label ?? id).replace(/\[(.+?)\]/g, "($1)") };
+            const p: Participant = { id, color: PAL[ci++ % PAL.length], label: (label ?? id).replace(/\[(.+?)\]/g, "($1)").replace(/<br\s*\/?>/gi, " ").trim() };
             participants.push(p); map.set(id, p);
         }
     }
@@ -363,6 +363,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
     });
     const renderBox = (p: Participant, i: number, y: number) => {
+        p = { ...p, label: p.label.replace(/<br\s*\/?>/gi, " ").trim() };
         const bw = pBW[i];
         const x = cx(i) - bw / 2;
         const col = pal[i % pal.length];
