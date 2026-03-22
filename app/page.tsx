@@ -1669,7 +1669,7 @@ function DiagramEditor() {
         return (
             <div
                 ref={canvasRef}
-                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: "#ffffff", fontFamily: "Inter, sans-serif", cursor: isMobile ? "default" : "crosshair", touchAction: "none", userSelect: "none" }}
+                style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: "#e8eaf0", fontFamily: "Inter, sans-serif", cursor: isMobile ? "default" : "crosshair", touchAction: "none", userSelect: "none" }}
                 onMouseMove={e => {
                     const rect = canvasRef.current!.getBoundingClientRect();
                     setHoverScreenY(e.clientY - rect.top);
