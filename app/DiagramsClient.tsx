@@ -676,8 +676,6 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#e8eaf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
                 <div style={{ fontSize: 11, color: "#5a5c7a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{user.email}</div>
               </div>
-              <a href="/?new" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", fontSize: 13, color: "#c8cadf", textDecoration: "none" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#252640")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>✏️ Open Editor</a>
               <button onClick={signOut}
                 style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", borderTop: "1px solid #2a2b45", cursor: "pointer", fontSize: 13, color: "#f87171", fontFamily: "inherit", fontWeight: 500 }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#2a1a1a")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>Sign out</button>

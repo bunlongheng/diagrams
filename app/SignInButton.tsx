@@ -9,7 +9,6 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
   const inputStyle: React.CSSProperties = {
@@ -46,18 +45,6 @@ export default function LoginForm() {
     showToast(greetings[Math.floor(Math.random() * greetings.length)]);
   }
 
-  async function sendReset() {
-    if (!email) { setError("Enter your email first"); return; }
-    setError(""); setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/update-password`,
-    });
-    setLoading(false);
-    if (error) setError(error.message);
-    else setResetSent(true);
-  }
-
   return (
     <form onSubmit={signIn} style={{ display: "flex", flexDirection: "column", gap: 10, width: 280 }}>
       <input
@@ -85,13 +72,6 @@ export default function LoginForm() {
       }}>
         {loading ? "Signing in…" : "Sign In"}
       </button>
-      {resetSent
-        ? <p style={{ fontSize: 12, color: "#6ee7b7", margin: 0, textAlign: "center" }}>Check your email for a reset link</p>
-        : <button type="button" onClick={sendReset} style={{
-            fontSize: 12, color: "#6b7280", background: "none", border: "none",
-            cursor: "pointer", padding: 0, textAlign: "center",
-          }}>Forgot password?</button>
-      }
     </form>
   );
 }
