@@ -28,25 +28,23 @@ export default function DiagramsShell() {
       if (data) setDiagrams(data);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      if (u && allowed && u.email !== allowed) {
-        supabase.auth.signOut();
-      } else if (u) {
-        setUser(u);
-        fetchDiagrams(u);
-      }
-      setSessionChecked(true);
-    }).catch(() => { setSessionChecked(true); });
-
+    // Use onAuthStateChange as single source of truth.
+    // INITIAL_SESSION fires on every page load with the persisted session (cookie-based, 400-day maxAge).
+    // This covers: fresh login (SIGNED_IN), returning user (INITIAL_SESSION), token refresh (TOKEN_REFRESHED).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user ?? null;
       if (u && allowed && u.email !== allowed) {
         supabase.auth.signOut();
         setUser(null);
-      } else {
-        if (event === "SIGNED_IN") { setUser(u); if (u) fetchDiagrams(u); }
-        if (event === "SIGNED_OUT") { setUser(null); setDiagrams([]); }
+        setSessionChecked(true);
+      } else if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        setUser(u);
+        if (u) fetchDiagrams(u);
+        setSessionChecked(true);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        setDiagrams([]);
+        setSessionChecked(true);
       }
     });
 
