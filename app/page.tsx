@@ -27,12 +27,13 @@ function highlight(code: string) {
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Participant { id: string; label: string; color: string }
 type Arrow = "solid" | "dashed";
-interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; displayStep?: number }
-interface Diagram { participants: Participant[]; messages: SeqMsg[]; title?: string }
-interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; font: string; lifelineDash: string; theme: string; iconMode: "none" | "icons" | "emoji"; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string> }
+interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; seqPos: number; displayStep?: number }
+interface SeqNote { participants: string[]; text: string; position: "over" | "left" | "right"; seqPos: number }
+interface Diagram { participants: Participant[]; messages: SeqMsg[]; notes: SeqNote[]; title?: string; totalSteps: number }
+interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; showNotes: boolean; font: string; lifelineDash: string; theme: string; iconMode: "none" | "icons" | "emoji"; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string> }
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
-const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "none", icons: {}, boxOverlay: "none", autoLayout: true, labelOverrides: {} };
+const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: true, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "none", icons: {}, boxOverlay: "none", autoLayout: true, labelOverrides: {} };
 const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120, vPad: 44 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -190,7 +191,8 @@ function parse(code: string): Diagram {
     const participants: Participant[] = [];
     const map = new Map<string, Participant>();
     const messages: SeqMsg[] = [];
-    let step = 0, ci = 0;
+    const notes: SeqNote[] = [];
+    let step = 0, seqPos = 0, ci = 0;
     let title: string | undefined;
     function addP(id: string, label?: string) {
         if (!map.has(id)) {
@@ -205,22 +207,35 @@ function parse(code: string): Diagram {
         if (tm) { title = tm[1].trim(); continue; }
         const pm = l.match(/^(?:participant|actor)\s+(\S+)(?:\s+as\s+(.+))?$/i);
         if (pm) { addP(pm[1], pm[2]); continue; }
+        const nm = l.match(/^note\s+(over|left\s+of|right\s+of)\s+([\w,\s]+?):\s*(.*)$/i);
+        if (nm) {
+            const posRaw = nm[1].toLowerCase();
+            const pos: "over" | "left" | "right" = posRaw.startsWith("l") ? "left" : posRaw.startsWith("r") ? "right" : "over";
+            const pIds = nm[2].split(",").map(s => s.trim()).filter(Boolean);
+            pIds.forEach(id => addP(id));
+            // Notes share vertical space with the previous message (no new seqPos)
+            // They render alongside their preceding step
+            notes.push({ participants: pIds, text: nm[3].trim(), position: pos, seqPos: seqPos || 1 });
+            continue;
+        }
         const mm = l.match(/^(\w+)\s*(-->>|->>|-->|->)\s*(\w+):\s*(.*)$/);
         if (mm) {
             const [, fId, arr, tId, rawText] = mm;
             addP(fId); addP(tId);
             const cleaned = rawText.replace(/<br\s*\/?>/gi, " ").trim();
             const numPfx = cleaned.match(/^(\d+)\.\s+([\s\S]*)$/);
+            ++seqPos;
             messages.push({
                 from: fId, to: tId,
                 text: numPfx ? numPfx[2].trim() : cleaned,
                 arrow: arr.startsWith("--") ? "dashed" : "solid",
                 step: ++step,
+                seqPos,
                 displayStep: numPfx ? parseInt(numPfx[1]) : undefined,
             });
         }
     }
-    return { participants, messages, title };
+    return { participants, messages, notes, title, totalSteps: seqPos };
 }
 
 // ── SVG Renderer ──────────────────────────────────────────────────────────────
@@ -330,8 +345,36 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const cx = (i: number) => colX[i] ?? LP + BW / 2;
     const W = N > 1 ? colX[N - 1] + BW / 2 + LP : 2 * LP + BW;
     const VP = l.vPad ?? 44;
-    const H = TOP_PAD + TITLE_H + TP + BH + VP + ms.length * MG + VP + BH + BOT_PAD;
-    const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - BH;
+    const totalSteps = d.totalSteps || ms.length;
+    // ── Pre-compute notes section height ──────────────────────────────────────
+    const NOTE_HPAD = 14, NOTE_VPAD = 10, NOTE_ITEM_GAP = 8, NOTE_SEC_PAD = 16, CORNER = 8;
+    const noteLineH = FS + 6;
+    // Group notes by leftmost participant column
+    const notesByCol = new Map<number, SeqNote[]>();
+    if (o.showNotes !== false) {
+        d.notes.forEach(note => {
+            const pis = note.participants.map(id => idx.get(id)).filter((i): i is number => i !== undefined);
+            if (!pis.length) return;
+            const col = Math.min(...pis);
+            if (!notesByCol.has(col)) notesByCol.set(col, []);
+            notesByCol.get(col)!.push(note);
+        });
+    }
+    let notesSectionH = 0;
+    if (notesByCol.size > 0) {
+        let maxColH = 0;
+        notesByCol.forEach(colNotes => {
+            let colH = 0;
+            colNotes.forEach(note => {
+                const lines = note.text.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
+                colH += lines.length * noteLineH + NOTE_VPAD * 2 + NOTE_ITEM_GAP;
+            });
+            maxColH = Math.max(maxColH, colH);
+        });
+        notesSectionH = maxColH + NOTE_SEC_PAD * 2;
+    }
+    const H = TOP_PAD + TITLE_H + TP + BH + VP + Math.max(0, totalSteps - 1) * MG + VP + BH + notesSectionH + BOT_PAD;
+    const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - notesSectionH - BH;
     const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * MG;
     const f = `'${o.font}', sans-serif`;
     const ld = LIFELINE_DASH.solid;
@@ -427,7 +470,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     ps.forEach((p, i) => renderBox(p, i, TOP_PAD + TITLE_H + TP));
     ms.forEach(msg => {
         const fi = idx.get(msg.from) ?? 0, ti = idx.get(msg.to) ?? 0;
-        const y = msgY(msg.step);
+        const y = msgY(msg.seqPos);
         const fx = cx(fi), tx = cx(ti);
         const fp = ps[fi];
         const fpColor = pal[fi % pal.length];
@@ -526,7 +569,37 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${th.labelFill}">${msg.displayStep ?? msg.step}</text>`);
         }
     });
-    ps.forEach((p, i) => renderBox(p, i, H - BOT_PAD - BH));
+    // ── Notes section — below bottom boxes ───────────────────────────────────
+    if (notesByCol.size > 0) {
+        const secY = lb + BH + NOTE_SEC_PAD; // start just below bottom boxes
+        notesByCol.forEach((colNotes, colI) => {
+            let curY = secY;
+            colNotes.forEach(note => {
+                const pis = note.participants.map(id => idx.get(id)).filter((i): i is number => i !== undefined);
+                const noteColor = pal[colI % pal.length];
+                const noteFill  = noteColor + (o.theme === "light" ? "88" : "66");
+                const noteStroke = noteColor;
+                const noteText  = o.theme === "light" ? "#111111" : th.plainTextFill;
+                const lines = note.text.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
+                if (!lines.length) return;
+                // Width always matches the leftmost participant's box exactly
+                const nw = pBW[colI];
+                const nx = cx(colI) - nw / 2;
+                const nh = lines.length * noteLineH + NOTE_VPAD * 2;
+                const ny = curY;
+                const nxr = nx + nw;
+                parts.push(`<path d="M${nx},${ny} L${nxr - CORNER},${ny} L${nxr},${ny + CORNER} L${nxr},${ny + nh} L${nx},${ny + nh} Z" fill="${th.bg}"/>`);
+                parts.push(`<path d="M${nx},${ny} L${nxr - CORNER},${ny} L${nxr},${ny + CORNER} L${nxr},${ny + nh} L${nx},${ny + nh} Z" fill="${noteFill}" stroke="${noteStroke}" stroke-width="1.5"/>`);
+                parts.push(`<path d="M${nxr - CORNER},${ny} L${nxr - CORNER},${ny + CORNER} L${nxr},${ny + CORNER}" fill="${noteStroke}" fill-opacity="0.25" stroke="${noteStroke}" stroke-width="1.5"/>`);
+                lines.forEach((line, li) => {
+                    const ty = ny + NOTE_VPAD + li * noteLineH + noteLineH / 2;
+                    parts.push(`<text x="${nx + NOTE_HPAD}" y="${ty}" dominant-baseline="middle" font-family="${f}" font-size="${FS}" fill="${noteText}">${esc(line)}</text>`);
+                });
+                curY += nh + NOTE_ITEM_GAP;
+            });
+        });
+    }
+    ps.forEach((p, i) => renderBox(p, i, lb));
     if (defs.length) parts.splice(1, 0, `<defs>${defs.join("")}</defs>`);
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
 }
@@ -626,7 +699,7 @@ function SettingsContent({
                     <div>
                         <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 7 }}>Style</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 10 : 7 }}>
-                            {([ ["coloredLines","Line Colors"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"] ] as const).map(([k, label]) => (
+                            {([ ["coloredLines","Line Colors"], ["coloredNumbers","Numbers"], ["coloredText","Text Pill"], ["showNotes","Notes"] ] as const).map(([k, label]) => (
                                 <div key={k} className="flex items-center justify-between cursor-pointer select-none"
                                     onClick={() => upd({ [k]: !opts[k] } as Partial<Opts>)}>
                                     <span style={{ fontSize: fs(11), color: ut.bodyText, fontWeight: 400 }}>{label}</span>
@@ -1212,6 +1285,20 @@ function DiagramEditor() {
         if (params.get("view") === "1") setViewMode(true);
         try { const o = localStorage.getItem("nsd-opts"); if (o) setOpts(prev => ({ ...prev, ...JSON.parse(o!) })); } catch {}
         try { const l = localStorage.getItem("nsd-layout"); if (l) setLayout(prev => ({ ...prev, ...JSON.parse(l!) })); } catch {}
+
+        // ?data= — inline diagram code (LZ-compressed or plain URI-encoded)
+        const dataParam = params.get("data");
+        if (dataParam) {
+            let decoded = LZString.decompressFromEncodedURIComponent(dataParam) || "";
+            if (!decoded) { try { decoded = atob(dataParam); } catch { decoded = ""; } }
+            if (!decoded) { try { decoded = decodeURIComponent(dataParam); } catch { decoded = ""; } }
+            if (decoded) {
+                setCode(decoded);
+                setViewMode(true); // treat as read-only share/demo link — no save, no new diagram
+                const t = decoded.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
+                if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
+            }
+        }
 
         const urlId = params.get("id");
         const isImported = params.get("imported") === "1";
