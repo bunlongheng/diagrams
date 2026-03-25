@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Code2, SlidersHorizontal, X, ArrowLeft } from "lucide-react";
 import { CuteToast, showToast } from "./CuteToast";
 import { createClient } from "@/lib/supabase/client";
@@ -1027,6 +1027,7 @@ function DiagramEditor() {
     const [mounted, setMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [code, setCode] = useState("");
+    const deferredCode = useDeferredValue(code);
     const [showCode, setShowCode] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [editorDark, setEditorDark] = useState(false);
@@ -1048,7 +1049,7 @@ function DiagramEditor() {
     const [isSharedDiagram, setIsSharedDiagram] = useState(false);
     const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
 
-    const diagramType = useMemo(() => detectDiagramType(code), [code]);
+    const diagramType = useMemo(() => detectDiagramType(deferredCode), [deferredCode]);
     const isSequence = diagramType === "sequence";
 
     const [panX, setPanX] = useState(0);
@@ -1316,12 +1317,7 @@ function DiagramEditor() {
             try { const s = new Set(JSON.parse(localStorage.getItem("diagram:shared") ?? "[]")); setIsSharedDiagram(s.has(urlId)); } catch {}
         }
 
-        // Share/view links always enter presenter mode immediately — no auth check needed
-        if (isViewMode || (dataParam && decodedData)) {
-            setViewMode(true);
-        }
-
-        // Fetch diagram content publicly — view mode OR local dev bypass (no auth required)
+        // Fetch diagram publicly (view mode, local dev, or ?data=)
         if (urlId && (isViewMode || process.env.NEXT_PUBLIC_LOCAL_DEV === "true")) {
             setDiagramLoading(true);
             fetch(`/api/diagrams/${urlId}`).then(r => r.json()).then(d => {
@@ -1337,29 +1333,30 @@ function DiagramEditor() {
             }).catch(() => setDiagramLoading(false));
         }
 
-        // Auth check — only needed for regular edit flow (no ?view=1)
-        if (!isViewMode) {
-            supabase.auth.getSession().then(({ data }) => {
-                if (data.session) {
-                    setSupabaseUser(data.session.user);
-                    if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV !== "true") {
-                        setDiagramLoading(true);
-                        void supabase.from("diagrams").select("code, settings").eq("id", urlId).single()
-                            .then(({ data: d }) => {
-                                if (d?.code) {
-                                    setCode(d.code);
-                                    const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
-                                    if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
-                                }
-                                if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
-                                if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
-                                setDiagramLoading(false);
-                                if (isImported) setTimeout(fireConfetti, 400);
-                            });
-                    }
+        // Auth check — authenticated = full editor, unauthenticated = presenter mode always
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) {
+                setSupabaseUser(data.session.user);
+                if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV !== "true") {
+                    setDiagramLoading(true);
+                    void supabase.from("diagrams").select("code, settings").eq("id", urlId).single()
+                        .then(({ data: d }) => {
+                            if (d?.code) {
+                                setCode(d.code);
+                                const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
+                                if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
+                            }
+                            if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
+                            if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
+                            setDiagramLoading(false);
+                            if (isImported) setTimeout(fireConfetti, 400);
+                        });
                 }
-            });
-        }
+            } else {
+                // Not authenticated — always presenter mode
+                setViewMode(true);
+            }
+        });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSupabaseUser(session?.user ?? null);
@@ -1390,7 +1387,7 @@ function DiagramEditor() {
     useEffect(() => { if (mounted) localStorage.setItem("nsd-layout", JSON.stringify(layout)); }, [layout, mounted]);
 
 
-    const diagram = useMemo(() => code.trim() ? parse(code) : parse("sequenceDiagram"), [code]);
+    const diagram = useMemo(() => deferredCode.trim() ? parse(deferredCode) : parse("sequenceDiagram"), [deferredCode]);
 
     // ── Auto layout — compute from diagram content ────────────────────────
     const computedLayout = useMemo((): Layout => {
