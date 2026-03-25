@@ -456,22 +456,25 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
 
         if (o.iconMode === "emoji" && labelEmoji) {
             const IW = BH; // white section is square
-            const clipId = `eic${i}_${Math.round(y)}`;
-            defs.push(`<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}"/></clipPath>`);
-            parts.push(`<rect x="${x+1}" y="${y+1}" width="${IW-1}" height="${BH-2}" fill="white" fill-opacity="0.92" clip-path="url(#${clipId})"/>`);
-            parts.push(`<line x1="${x+IW}" y1="${y+4}" x2="${x+IW}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.4" stroke-width="1"/>`);
+            // Left-rounded path: inner radius = BR-1 so it sits perfectly inside the box stroke
+            const r = Math.max(0, BR - 1);
+            const wx = x + 1, wy = y + 1, ww = IW - 1, wh = BH - 2;
+            const wp = `M${wx+r},${wy} H${wx+ww} V${wy+wh} H${wx+r} Q${wx},${wy+wh} ${wx},${wy+wh-r} V${wy+r} Q${wx},${wy} ${wx+r},${wy} Z`;
+            parts.push(`<path d="${wp}" fill="white" fill-opacity="0.92"/>`);
+            parts.push(`<line x1="${x+IW-1}" y1="${y+4}" x2="${x+IW-1}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.35" stroke-width="1"/>`);
             parts.push(`<text x="${x + IW/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-size="${BH*0.52}">${labelEmoji}</text>`);
             parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${BOX_FS}" font-weight="700" fill="${th.labelFill}">${esc(labelText)}</text>`);
         } else if (o.iconMode === "icons") {
             const IW = BH; // white section is square
-            const clipId = `ico${i}_${Math.round(y)}`;
             const pColor = pal[i % pal.length];
             const ISIZE = Math.min(BH - 8, 18);
             const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
-            defs.push(`<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}"/></clipPath>`);
-            // White left section — inset 1px so it doesn't overlap the box border stroke
-            parts.push(`<rect x="${x+1}" y="${y+1}" width="${IW-1}" height="${BH-2}" fill="white" fill-opacity="0.92" clip-path="url(#${clipId})"/>`);
-            parts.push(`<line x1="${x+IW}" y1="${y+4}" x2="${x+IW}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.4" stroke-width="1"/>`);
+            // Left-rounded path: inner radius = BR-1 so it sits perfectly inside the box stroke
+            const r = Math.max(0, BR - 1);
+            const wx = x + 1, wy = y + 1, ww = IW - 1, wh = BH - 2;
+            const wp = `M${wx+r},${wy} H${wx+ww} V${wy+wh} H${wx+r} Q${wx},${wy+wh} ${wx},${wy+wh-r} V${wy+r} Q${wx},${wy} ${wx+r},${wy} Z`;
+            parts.push(`<path d="${wp}" fill="white" fill-opacity="0.92"/>`);
+            parts.push(`<line x1="${x+IW-1}" y1="${y+4}" x2="${x+IW-1}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.35" stroke-width="1"/>`);
             // Icon centered in white section, colored stroke
             parts.push(renderIcon(iconKey, x + IW / 2, y + BH / 2, ISIZE, pColor));
             // Label text in remaining colored area
