@@ -875,19 +875,16 @@ function SettingsContent({
                 {opts.iconMode === "icons" && participants.length > 0 && <>
                     <div style={{ height: 1, background: ut.divider }} />
                     <div>
-                        <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Icons</div>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                            {participants.map((p, pi) => {
+                        <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Icons</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            {participants.map(p => {
                                 const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
                                 return (
-                                    <div key={p.id}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0" }}>
-                                            <IconPicker
-                                                value={currentKey}
-                                                color={p.color}
-                                                ut={ut}
-                                                onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })}
-                                            />
+                                    <div key={p.id} style={{ display: "flex", alignItems: "stretch", borderRadius: 8, border: "2px solid #111", overflow: "hidden", height: 36 }}>
+                                        {/* White icon section — click to change icon */}
+                                        <IconPicker value={currentKey} color={p.color} ut={ut} onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })} />
+                                        {/* Colored label section */}
+                                        <div style={{ flex: 1, background: p.color, display: "flex", alignItems: "center", paddingLeft: 10, borderLeft: "1px solid rgba(255,255,255,0.25)" }}>
                                             <input
                                                 defaultValue={opts.labelOverrides?.[p.id] ?? p.label}
                                                 key={opts.labelOverrides?.[p.id] ?? p.label}
@@ -899,10 +896,9 @@ function SettingsContent({
                                                     }
                                                 }}
                                                 onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                                                style={{ fontSize: fs(13), color: ut.bodyText, flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: "1px 0" }}
+                                                style={{ fontSize: fs(12), fontWeight: 700, color: "#fff", flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0 }}
                                             />
                                         </div>
-                                        {pi < participants.length - 1 && <div style={{ height: 1, background: ut.divider, marginLeft: 38 }} />}
                                     </div>
                                 );
                             })}
@@ -956,9 +952,9 @@ function IconPicker({ value, color, ut, onChange }: { value: string; color: stri
             <button
                 onClick={() => { setOpen(o => !o); setSearch(""); }}
                 title={value}
-                style={{ width: 34, height: 34, borderRadius: 9, background: color, border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, boxShadow: "0 2px 6px rgba(0,0,0,0.18)" }}
+                style={{ width: 36, height: "100%", borderRadius: 0, background: "#f0faf4", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
             >
-                <IconSvg iconKey={value} size={18} color="white" />
+                <IconSvg iconKey={value} size={18} color={color} />
             </button>
             {open && (
                 <div style={{ position: "absolute", left: 0, top: "calc(100% + 6px)", zIndex: 999, background: ut.panelBg, border: `1px solid ${ut.panelBorder}`, borderRadius: 10, padding: 8, width: 232, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }}>
