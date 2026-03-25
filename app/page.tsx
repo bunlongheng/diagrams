@@ -1317,8 +1317,8 @@ function DiagramEditor() {
             try { const s = new Set(JSON.parse(localStorage.getItem("diagram:shared") ?? "[]")); setIsSharedDiagram(s.has(urlId)); } catch {}
         }
 
-        // Fetch diagram publicly (view mode, local dev, or ?data=)
-        if (urlId && (isViewMode || process.env.NEXT_PUBLIC_LOCAL_DEV === "true")) {
+        // Always fetch diagram publicly — auth check below decides editor vs presenter
+        if (urlId) {
             setDiagramLoading(true);
             fetch(`/api/diagrams/${urlId}`).then(r => r.json()).then(d => {
                 if (d?.code) {
