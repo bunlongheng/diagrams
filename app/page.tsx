@@ -832,25 +832,32 @@ function SettingsContent({
                 {/* Box Overlay */}
                 <div>
                     <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Overlay</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
                         {([
-                            ["none",  "None",   "—"],
-                            ["gloss", "Gloss",  "✦"],
-                            ["hatch", "Hatch",  "▨"],
-                            ["dots",  "Dots",   "⁘"],
-                            ["pulse", "Pulse",  "◎"],
-                        ] as const).map(([v, label, icon]) => (
-                            <button key={v} onClick={() => upd({ boxOverlay: v })}
-                                style={{
-                                    padding: mobile ? "8px 4px" : "6px 4px", borderRadius: 8,
-                                    fontSize: fs(10), fontWeight: 700, letterSpacing: "0.02em",
-                                    border: opts.boxOverlay === v ? `2px solid ${ut.accent}` : "2px solid transparent",
-                                    background: ut.overlayBtnBg, color: opts.boxOverlay === v ? ut.accent : ut.inactiveTabText,
-                                    cursor: "pointer", transition: "border 0.15s, color 0.15s",
-                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                                }}
-                            ><span>{icon}</span><span>{label}</span></button>
-                        ))}
+                            ["none",  "None",  ""],
+                            ["gloss", "Gloss", "linear-gradient(to bottom, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.32) 55%, transparent 55%)"],
+                            ["hatch", "Hatch", "repeating-linear-gradient(45deg, rgba(255,255,255,0.3) 0px, rgba(255,255,255,0.3) 1px, transparent 1px, transparent 9px)"],
+                            ["dots",  "Dots",  ""],
+                            ["pulse", "Pulse", "radial-gradient(circle at 50% 50%, transparent 18%, rgba(255,255,255,0.28) 19%, rgba(255,255,255,0.28) 21%, transparent 22%, transparent 36%, rgba(255,255,255,0.28) 37%, rgba(255,255,255,0.28) 39%, transparent 40%)"],
+                        ] as const).map(([v, label, overlay]) => {
+                            const active = opts.boxOverlay === v;
+                            return (
+                                <button key={v} onClick={() => upd({ boxOverlay: v })} style={{
+                                    padding: 0, borderRadius: 8, border: active ? `2px solid ${ut.accent}` : "2px solid transparent",
+                                    background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, overflow: "hidden",
+                                }}>
+                                    {/* Swatch */}
+                                    <div style={{ width: "100%", height: 32, borderRadius: 6, background: "#4f8ef7", position: "relative", overflow: "hidden", flexShrink: 0 }}>
+                                        {v === "dots"
+                                            ? <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.35) 1.5px, transparent 1.5px)", backgroundSize: "7px 7px" }} />
+                                            : overlay && <div style={{ position: "absolute", inset: 0, background: overlay }} />
+                                        }
+                                    </div>
+                                    {/* Label */}
+                                    <span style={{ fontSize: fs(9), fontWeight: 700, color: active ? ut.accent : ut.inactiveTabText, letterSpacing: "0.02em", paddingBottom: 3 }}>{label}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -883,8 +890,12 @@ function SettingsContent({
                                     <div key={p.id} style={{ display: "flex", alignItems: "stretch", borderRadius: 8, border: "2px solid #111", overflow: "hidden", height: 36 }}>
                                         {/* White icon section — click to change icon */}
                                         <IconPicker value={currentKey} color={p.color} ut={ut} onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })} />
-                                        {/* Colored label section */}
-                                        <div style={{ flex: 1, background: p.color, display: "flex", alignItems: "center", paddingLeft: 10, borderLeft: "1px solid rgba(255,255,255,0.25)" }}>
+                                        {/* Colored label section with overlay */}
+                                        <div style={{ flex: 1, background: p.color, display: "flex", alignItems: "center", paddingLeft: 10, borderLeft: "1px solid rgba(255,255,255,0.25)", position: "relative", overflow: "hidden" }}>
+                                            {opts.boxOverlay === "gloss" && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.18) 55%, transparent 55%)", pointerEvents: "none" }} />}
+                                            {opts.boxOverlay === "hatch" && <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 9px)", pointerEvents: "none" }} />}
+                                            {opts.boxOverlay === "dots" && <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.22) 1.2px, transparent 1.2px)", backgroundSize: "7px 7px", pointerEvents: "none" }} />}
+                                            {opts.boxOverlay === "pulse" && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 50%, transparent 20%, rgba(255,255,255,0.08) 21%, rgba(255,255,255,0.08) 22%, transparent 23%, transparent 38%, rgba(255,255,255,0.08) 39%, rgba(255,255,255,0.08) 40%, transparent 41%)", pointerEvents: "none" }} />}
                                             <input
                                                 defaultValue={opts.labelOverrides?.[p.id] ?? p.label}
                                                 key={opts.labelOverrides?.[p.id] ?? p.label}
@@ -952,7 +963,7 @@ function IconPicker({ value, color, ut, onChange }: { value: string; color: stri
             <button
                 onClick={() => { setOpen(o => !o); setSearch(""); }}
                 title={value}
-                style={{ width: 36, height: "100%", borderRadius: 0, background: "#f0faf4", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                style={{ width: 36, height: "100%", borderRadius: 0, background: "#ffffff", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
             >
                 <IconSvg iconKey={value} size={18} color={color} />
             </button>
@@ -1305,8 +1316,13 @@ function DiagramEditor() {
             try { const s = new Set(JSON.parse(localStorage.getItem("diagram:shared") ?? "[]")); setIsSharedDiagram(s.has(urlId)); } catch {}
         }
 
-        // Fetch diagram content publicly when in view mode (no auth required)
-        if (urlId && isViewMode) {
+        // Share/view links always enter presenter mode immediately — no auth check needed
+        if (isViewMode || (dataParam && decodedData)) {
+            setViewMode(true);
+        }
+
+        // Fetch diagram content publicly — view mode OR local dev bypass (no auth required)
+        if (urlId && (isViewMode || process.env.NEXT_PUBLIC_LOCAL_DEV === "true")) {
             setDiagramLoading(true);
             fetch(`/api/diagrams/${urlId}`).then(r => r.json()).then(d => {
                 if (d?.code) {
@@ -1321,43 +1337,29 @@ function DiagramEditor() {
             }).catch(() => setDiagramLoading(false));
         }
 
-        // Auth check: authenticated users always get the full editor; unauthenticated get presenter for share links
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-                setSupabaseUser(data.session.user);
-                // Auth user on a share/view link: show full editor (don't enter presenter mode)
-                // Diagram content already loaded above via public API if isViewMode
-                if (urlId && !isViewMode) {
-                    // Normal edit flow — load with auth
-                    setDiagramLoading(true);
-                    void supabase.from("diagrams").select("code, settings").eq("id", urlId).single()
-                        .then(({ data: d }) => {
-                            if (d?.code) {
-                                setCode(d.code);
-                                const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
-                                if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
-                            }
-                            if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
-                            if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
-                            setDiagramLoading(false);
-                            if (isImported) setTimeout(fireConfetti, 400);
-                        });
-                } else if (process.env.NEXT_PUBLIC_LOCAL_DEV === "true" && urlId && !isViewMode) {
-                    setDiagramLoading(true);
-                    fetch(`/api/diagrams/${urlId}`).then(r => r.json()).then(d => {
-                        if (d?.code) setCode(d.code);
-                        if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
-                        if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
-                        setDiagramLoading(false);
-                    }).catch(() => setDiagramLoading(false));
+        // Auth check — only needed for regular edit flow (no ?view=1)
+        if (!isViewMode) {
+            supabase.auth.getSession().then(({ data }) => {
+                if (data.session) {
+                    setSupabaseUser(data.session.user);
+                    if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV !== "true") {
+                        setDiagramLoading(true);
+                        void supabase.from("diagrams").select("code, settings").eq("id", urlId).single()
+                            .then(({ data: d }) => {
+                                if (d?.code) {
+                                    setCode(d.code);
+                                    const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
+                                    if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
+                                }
+                                if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
+                                if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
+                                setDiagramLoading(false);
+                                if (isImported) setTimeout(fireConfetti, 400);
+                            });
+                    }
                 }
-            } else {
-                // Unauthenticated: enter presenter mode for share/view links
-                if (isViewMode || (dataParam && decodedData)) {
-                    setViewMode(true);
-                }
-            }
-        });
+            });
+        }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSupabaseUser(session?.user ?? null);
