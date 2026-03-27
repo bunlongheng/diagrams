@@ -59,7 +59,7 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   const detectedType = /^sequenceDiagram/i.test(firstLine) ? "sequence"
     : /^(flowchart|graph)\s/i.test(firstLine) ? "flowchart"
     : type;
-  const svgStyle: React.CSSProperties = { display: "block", background: "#e8ecf0", borderRadius: 8 };
+  const svgStyle: React.CSSProperties = { display: "block", background: "#f0f1f3", borderRadius: 8 };
 
   // ── Sequence — show ALL participants, exact colors matching editor ───────────
   if (detectedType === "sequence") {
@@ -344,18 +344,18 @@ function RenameModal({ title, onSave, onClose }: { title: string; onSave: (t: st
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 16, padding: 24, width: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb" }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: "0 0 16px" }}>Rename Diagram</h3>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(6px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 16, padding: "28px 28px 24px", width: 440, boxShadow: "0 24px 64px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)" }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1c1e21", margin: "0 0 16px" }}>Rename Diagram</h3>
         <input
           ref={inputRef} value={val} onChange={e => setVal(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && val.trim()) onSave(val.trim()); if (e.key === "Escape") onClose(); }}
           placeholder="Diagram title…"
-          style={{ width: "100%", padding: "10px 14px", fontSize: 14, border: "1.5px solid #6366f1", borderRadius: 10, outline: "none", fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", color: "#111827", background: "#f8fafc" }}
+          style={{ width: "100%", padding: "10px 14px", fontSize: 14, border: "1.5px solid #1c1e21", borderRadius: 10, outline: "none", fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box", color: "#1c1e21", background: "#f4f5f7" }}
         />
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 9, background: "#f8fafc", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "#64748b" }}>Cancel</button>
-          <button onClick={() => val.trim() && onSave(val.trim())} style={{ padding: "8px 20px", background: "linear-gradient(135deg,#4f46e5,#6366f1)", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Save</button>
+          <button onClick={onClose} style={{ padding: "9px 18px", border: "1px solid #e4e6e8", borderRadius: 9, background: "#f4f5f7", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "#65676b" }}>Cancel</button>
+          <button onClick={() => val.trim() && onSave(val.trim())} style={{ padding: "9px 22px", background: "#1c1e21", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Save</button>
         </div>
       </div>
     </div>
@@ -377,60 +377,48 @@ function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShar
       onClick={onOpen}
       style={{
         background: "#ffffff",
-        borderRadius: 12,
+        borderRadius: 14,
         overflow: "hidden",
         cursor: "pointer",
-        transition: "box-shadow 0.18s, transform 0.15s, border-color 0.18s",
-        border: hovered ? "1px solid #a5b4fc" : "1px solid #e2e8f0",
-        boxShadow: hovered
-          ? "0 4px 20px rgba(99,102,241,0.12), 0 1px 4px rgba(0,0,0,0.06)"
-          : "0 1px 3px rgba(0,0,0,0.06)",
-        transform: hovered ? "translateY(-1px)" : "translateY(0)",
+        transition: "box-shadow 0.15s, transform 0.15s",
+        border: "1px solid #e4e6e8",
+        boxShadow: hovered ? "0 8px 24px rgba(0,0,0,0.1)" : "0 1px 4px rgba(0,0,0,0.05)",
+        transform: hovered ? "translateY(-2px)" : "translateY(0)",
         position: "relative",
       }}
     >
       {/* Header */}
-      <div style={{ padding: "11px 12px 8px", display: "flex", alignItems: "center", gap: 7 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ padding: "13px 14px 11px", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#1c1e21", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {d.title}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           {isShared && (
-            <span title="Public — anyone with the link can view" style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 600, color: "#6366f1", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 5, padding: "1px 5px" }}>
-              <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span title="Public" style={{ fontSize: 9, fontWeight: 600, color: "#65676b", background: "#f0f1f3", border: "1px solid #e4e6e8", borderRadius: 4, padding: "2px 6px" }}>
               Public
             </span>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 10, color: "#94a3b8" }}>
-            <svg width={9} height={9} viewBox="0 0 20 20" fill="none">
-              <circle cx={10} cy={10} r={7} stroke="currentColor" strokeWidth={1.8} />
-              <path d="M10 7v3.5l2 2" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
-            </svg>
-            {relativeTime(d.updated_at ?? d.created_at)}
-          </div>
+          <span style={{ fontSize: 10, color: "#8a8d91" }}>{relativeTime(d.updated_at ?? d.created_at)}</span>
         </div>
       </div>
 
-      {/* Divider */}
-      <div style={{ height: 1, background: "#f1f5f9", margin: "0 12px" }} />
-
       {/* Minimap */}
-      <div style={{ padding: "6px 10px 10px" }}>
+      <div style={{ padding: "0 12px 13px" }}>
         <DiagramMinimap code={d.code} type={d.diagram_type} />
       </div>
 
       {/* Hover actions */}
       {hovered && (
-        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 3 }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
           <button onClick={onToggleFav} title={isFav ? "Unfavorite" : "Favorite"}
-            style={{ width: 24, height: 24, borderRadius: 6, border: isFav ? "1px solid rgba(234,179,8,0.5)" : "1px solid #e2e8f0", background: "rgba(255,255,255,0.95)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-            <svg width={11} height={11} viewBox="0 0 24 24" fill={isFav ? "#eab308" : "none"} stroke={isFav ? "#eab308" : "#94a3b8"} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            style={{ width: 26, height: 26, borderRadius: 7, border: "1px solid #e4e6e8", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+            <svg width={12} height={12} viewBox="0 0 24 24" fill={isFav ? "#f59e0b" : "none"} stroke={isFav ? "#f59e0b" : "#8a8d91"} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
             </svg>
           </button>
           <button onClick={onDelete} title="Delete" disabled={deleting}
-            style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(239,68,68,0.3)", background: "rgba(255,255,255,0.95)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", opacity: deleting ? 0.5 : 1 }}>
-            <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            style={{ width: 26, height: 26, borderRadius: 7, border: "1px solid #e4e6e8", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", opacity: deleting ? 0.5 : 1 }}>
+            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
             </svg>
           </button>
@@ -587,21 +575,20 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#edf1f5", fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f4f5f7", fontFamily: "Inter, system-ui, sans-serif" }}>
       <style>{`
         @media (max-width: 640px) {
-          .dc-header { padding: 0 12px !important; gap: 10px !important; }
+          .dc-header { padding: 0 16px !important; }
           .dc-search-wrap { flex: 1 !important; width: auto !important; min-width: 0 !important; }
           .dc-search-wrap input { width: 100% !important; }
-          .dc-main { padding: 18px 12px 100px !important; }
-          .dc-fav-card { width: calc(75vw) !important; min-width: 160px !important; }
-          .dc-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 8px !important; }
+          .dc-main { padding: 20px 16px 100px !important; }
+          .dc-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; gap: 10px !important; }
         }
       `}</style>
 
       {/* ── Header ── */}
-      <header className="dc-header" style={{ background: "#f3f4f6", borderBottom: "1px solid #e5e7eb", padding: "0 24px", height: 52, display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 10, backdropFilter: "blur(12px)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
+      <header className="dc-header" style={{ background: "#ffffff", borderBottom: "1px solid #e4e6e8", padding: "0 32px", height: 56, display: "flex", alignItems: "center", gap: 20, position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <svg width={28} height={28} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 8 }}>
             <defs><linearGradient id="hbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#0f051e"/><stop offset="55%" stopColor="#2e0f6b"/><stop offset="100%" stopColor="#0c2340"/></linearGradient></defs>
             <rect width="512" height="512" rx="115" fill="url(#hbg)"/>
@@ -618,17 +605,17 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
             <line x1="125" y1="370" x2="385" y2="370" stroke="#a78bfa" strokeWidth="14" strokeLinecap="round" strokeDasharray="28 14"/>
             <polygon points="99,370 127,356 127,384" fill="#a78bfa"/>
           </svg>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#374151" }}>Diagrams</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#1c1e21", letterSpacing: "-0.01em" }}>Diagrams</span>
         </div>
 
         {/* Search */}
-        <div className="dc-search-wrap" style={{ position: "relative", width: 240 }}>
-          <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} width={13} height={13} viewBox="0 0 20 20" fill="none">
+        <div className="dc-search-wrap" style={{ position: "relative", width: 260 }}>
+          <svg style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#8a8d91" }} width={13} height={13} viewBox="0 0 20 20" fill="none">
             <circle cx={9} cy={9} r={6} stroke="currentColor" strokeWidth={1.8} />
             <path d="M14 14l3 3" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
           </svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search diagrams…"
-            style={{ width: "100%", padding: "6px 12px 6px 30px", boxSizing: "border-box", border: "1px solid #e2e8f0", borderRadius: 20, fontSize: 13, outline: "none", fontFamily: "inherit", color: "#374151", background: "#ffffff" }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+            style={{ width: "100%", padding: "7px 14px 7px 32px", boxSizing: "border-box", border: "1px solid #e4e6e8", borderRadius: 8, fontSize: 13, outline: "none", fontFamily: "inherit", color: "#1c1e21", background: "#f4f5f7" }} />
         </div>
 
         <div style={{ flex: 1 }} />
@@ -636,72 +623,68 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
         {/* Avatar */}
         <div ref={menuRef} style={{ position: "relative" }}>
           <button onClick={() => setShowMenu(v => !v)}
-            style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", border: showMenu ? "2px solid #6366f1" : "2px solid #e2e8f0", cursor: "pointer", padding: 0, background: "#e0e7ff", transition: "border-color 0.15s", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", userSelect: "none" }}>{name[0]?.toUpperCase()}</span>
+            style={{ width: 34, height: 34, borderRadius: "50%", overflow: "hidden", border: showMenu ? "2px solid #1c1e21" : "2px solid #e4e6e8", cursor: "pointer", padding: 0, background: "#e4e6e8", transition: "border-color 0.15s", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1c1e21", userSelect: "none" }}>{name[0]?.toUpperCase()}</span>
             {avatarSrc && <img src={avatarSrc} alt="" referrerPolicy="no-referrer" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
           </button>
           {showMenu && (
-            <div style={{ position: "absolute", top: 40, right: 0, width: 200, background: "#ffffff", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", overflow: "hidden", zIndex: 50 }}>
-              <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #f1f5f9" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{user.email}</div>
+            <div style={{ position: "absolute", top: 42, right: 0, width: 210, background: "#ffffff", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.12)", border: "1px solid #e4e6e8", overflow: "hidden", zIndex: 50 }}>
+              <div style={{ padding: "14px 16px 12px" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1c1e21", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                <div style={{ fontSize: 11, color: "#8a8d91", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>{user.email}</div>
               </div>
+              <div style={{ height: 1, background: "#f0f1f3" }} />
               <button onClick={() => { setShowDocs(true); setShowMenu(false); }}
-                style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", borderTop: "1px solid #f1f5f9", cursor: "pointer", fontSize: 13, color: "#374151", fontFamily: "inherit", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#1c1e21", fontFamily: "inherit", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#f4f5f7")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
                 <span style={{ fontSize: 14 }}>📋</span> Import formats
               </button>
+              <div style={{ height: 1, background: "#f0f1f3" }} />
               <button onClick={signOut}
-                style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", borderTop: "1px solid #f1f5f9", cursor: "pointer", fontSize: 13, color: "#ef4444", fontFamily: "inherit", fontWeight: 500 }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#fff5f5")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>Sign out</button>
+                style={{ width: "100%", padding: "11px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#dc2626", fontFamily: "inherit", fontWeight: 500 }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#fef2f2")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>Sign out</button>
             </div>
           )}
         </div>
       </header>
 
       {/* ── Content ── */}
-      <main className="dc-main" style={{ padding: "28px 24px 80px" }}>
+      <main className="dc-main" style={{ padding: "32px 32px 100px", maxWidth: 1600, margin: "0 auto" }}>
 
         {filtered.length === 0 && (
-          <div style={{ position: "fixed", inset: 0, top: 52, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", background: "#edf1f5" }}>
-            <svg width={40} height={40} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 10, opacity: 0.2, marginBottom: 10 }}>
-              <defs><linearGradient id="ebg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#0f051e"/><stop offset="55%" stopColor="#2e0f6b"/><stop offset="100%" stopColor="#0c2340"/></linearGradient></defs>
-              <rect width="512" height="512" rx="115" fill="url(#ebg)"/>
-              <rect x="48"  y="80" width="130" height="72" rx="16" fill="#fb7185"/>
-              <rect x="191" y="80" width="130" height="72" rx="16" fill="#a78bfa"/>
-              <rect x="334" y="80" width="130" height="72" rx="16" fill="#34d399"/>
-              <line x1="125" y1="210" x2="242" y2="210" stroke="#fbbf24" strokeWidth="14" strokeLinecap="round"/>
-              <polygon points="268,210 240,196 240,224" fill="#fbbf24"/>
-              <line x1="268" y1="290" x2="385" y2="290" stroke="#38bdf8" strokeWidth="14" strokeLinecap="round"/>
-              <polygon points="411,290 383,276 383,304" fill="#38bdf8"/>
-            </svg>
-            <p style={{ fontSize: 14, color: "#64748b", fontWeight: 600, margin: 0 }}>{search ? "No diagrams found" : "No diagrams yet"}</p>
-            <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{search ? "Try a different search" : "Paste diagram code to get started"}</p>
+          <div style={{ position: "fixed", inset: 0, top: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", background: "#f4f5f7" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: "#e4e6e8", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+              <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={1.5} strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+            </div>
+            <p style={{ fontSize: 14, color: "#1c1e21", fontWeight: 600, margin: 0 }}>{search ? "No diagrams found" : "No diagrams yet"}</p>
+            <p style={{ fontSize: 13, color: "#8a8d91", marginTop: 6 }}>{search ? "Try a different search" : "Paste diagram code to get started"}</p>
           </div>
         )}
 
         {/* Favorites */}
         {favDiagrams.length > 0 && (
-          <section style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14, display: "flex", alignItems: "center", gap: 5 }}>
-              <svg width={11} height={11} viewBox="0 0 24 24" fill="#eab308" stroke="#eab308" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <section style={{ marginBottom: 36 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
-              Favorites · {favDiagrams.length}
-            </h2>
-            <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#8a8d91", textTransform: "uppercase", letterSpacing: "0.08em" }}>Favorites</span>
+              <span style={{ fontSize: 11, color: "#bcc0c4", fontWeight: 500 }}>{favDiagrams.length}</span>
+            </div>
+            <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
               {favDiagrams.map(d => <DiagramCard key={d.id} {...cardProps(d)} />)}
             </div>
           </section>
         )}
 
-        {/* Recent */}
+        {/* All / Recent */}
         {recentDiagrams.length > 0 && (
           <section>
-            <h2 style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>
-              {favDiagrams.length > 0 ? "Recent" : "All Diagrams"} · {recentDiagrams.length}
-            </h2>
-            <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#8a8d91", textTransform: "uppercase", letterSpacing: "0.08em" }}>{favDiagrams.length > 0 ? "Recent" : "All Diagrams"}</span>
+              <span style={{ fontSize: 11, color: "#bcc0c4", fontWeight: 500 }}>{recentDiagrams.length}</span>
+            </div>
+            <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
               {recentDiagrams.map(d => <DiagramCard key={d.id} {...cardProps(d)} />)}
             </div>
           </section>
@@ -710,7 +693,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
 
       {/* ── FAB ── */}
       <a href="/?new" title="New diagram"
-        style={{ position: "fixed", bottom: 28, right: 28, width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#4f46e5,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 1px rgba(99,102,241,0.3), 0 4px 20px rgba(79,70,229,0.4)", textDecoration: "none", fontSize: 26, color: "#fff" }}
+        style={{ position: "fixed", bottom: 32, right: 32, width: 52, height: 52, borderRadius: "50%", background: "#1c1e21", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", textDecoration: "none", fontSize: 26, color: "#fff" }}
       >+</a>
 
       {renamingDiagram && (
@@ -722,60 +705,38 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
       )}
 
       {confirmDeleteId && (
-        <div onClick={() => setConfirmDeleteId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 16, padding: 24, width: 360, boxShadow: "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>Delete diagram?</h3>
-            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>This can't be undone.</p>
+        <div onClick={() => setConfirmDeleteId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(6px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 16, padding: "28px 28px 24px", width: 380, boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1c1e21", margin: "0 0 8px" }}>Delete diagram?</h3>
+            <p style={{ fontSize: 13, color: "#65676b", margin: "0 0 24px", lineHeight: 1.5 }}>This can't be undone.</p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setConfirmDeleteId(null)} style={{ padding: "8px 16px", border: "1px solid #e2e8f0", borderRadius: 9, background: "#f8fafc", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "#64748b" }}>Cancel</button>
-              <button onClick={() => deleteDiagram(confirmDeleteId)} style={{ padding: "8px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Delete</button>
+              <button onClick={() => setConfirmDeleteId(null)} style={{ padding: "9px 18px", border: "1px solid #e4e6e8", borderRadius: 9, background: "#f4f5f7", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "#65676b" }}>Cancel</button>
+              <button onClick={() => deleteDiagram(confirmDeleteId)} style={{ padding: "9px 22px", background: "#dc2626", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Delete</button>
             </div>
           </div>
         </div>
       )}
 
       {showDocs && (
-        <div onClick={() => setShowDocs(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 16, padding: 28, width: 540, maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb" }}>
+        <div onClick={() => setShowDocs(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(6px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 16, padding: "28px 32px", width: 560, maxHeight: "80vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111827", margin: 0 }}>Import Formats</h2>
-              <button onClick={() => setShowDocs(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1c1e21", margin: 0 }}>Import Formats</h2>
+              <button onClick={() => setShowDocs(false)} style={{ background: "none", border: "none", color: "#8a8d91", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
             </div>
-
-            <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 20px" }}>Paste any of these directly on the page or into the code editor. Sequence diagrams are auto-saved; use <kbd style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 4, padding: "1px 5px", fontSize: 11, color: "#374151" }}>⌘S</kbd> to save edits.</p>
-
+            <p style={{ fontSize: 12, color: "#65676b", margin: "0 0 20px", lineHeight: 1.6 }}>Paste any of these directly on the page or into the code editor. Sequence diagrams auto-save; use <kbd style={{ background: "#f4f5f7", border: "1px solid #e4e6e8", borderRadius: 4, padding: "1px 6px", fontSize: 11, color: "#1c1e21" }}>⌘S</kbd> to save edits.</p>
             {[
-              {
-                label: "Mermaid Sequence Diagram",
-                tag: "Auto-saves on paste",
-                tagColor: "#16a34a",
-                code: `sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello!\n  B-->>A: Hi there\n  Note over A,B: A note\n  loop Every minute\n    A->>B: Ping\n  end\n  alt success\n    B->>A: OK\n  else failure\n    B->>A: Error\n  end`,
-              },
-              {
-                label: "Arrow types",
-                tag: "Syntax",
-                tagColor: "#6366f1",
-                code: `A->B: solid line, no arrow\nA->>B: solid line, arrowhead\nA-->B: dashed, no arrow\nA-->>B: dashed, arrowhead\nA==>B: thick solid`,
-              },
-              {
-                label: "With title & autonumber",
-                tag: "Optional",
-                tagColor: "#7c3aed",
-                code: `sequenceDiagram\n  title: My API Flow\n  autonumber\n  Client->>Server: POST /login\n  Server-->>Client: 200 OK`,
-              },
-              {
-                label: "Markdown fenced block",
-                tag: "Also accepted",
-                tagColor: "#0891b2",
-                code: `\`\`\`mermaid\nsequenceDiagram\n  A->>B: works too\n\`\`\``,
-              },
+              { label: "Mermaid Sequence Diagram", tag: "Auto-saves on paste", tagColor: "#16a34a", code: `sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello!\n  B-->>A: Hi there` },
+              { label: "Arrow types", tag: "Syntax", tagColor: "#65676b", code: `A->B: solid line, no arrow\nA->>B: solid line, arrowhead\nA-->B: dashed, no arrow\nA-->>B: dashed, arrowhead` },
+              { label: "With title & autonumber", tag: "Optional", tagColor: "#65676b", code: `sequenceDiagram\n  title: My API Flow\n  autonumber\n  Client->>Server: POST /login\n  Server-->>Client: 200 OK` },
+              { label: "Markdown fenced block", tag: "Also accepted", tagColor: "#65676b", code: `\`\`\`mermaid\nsequenceDiagram\n  A->>B: works too\n\`\`\`` },
             ].map(({ label, tag, tagColor, code }) => (
-              <div key={label} style={{ marginBottom: 18 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{label}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: tagColor, background: `${tagColor}18`, borderRadius: 4, padding: "1px 6px" }}>{tag}</span>
+              <div key={label} style={{ marginBottom: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#1c1e21" }}>{label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: tagColor, background: `${tagColor}14`, borderRadius: 4, padding: "2px 7px" }}>{tag}</span>
                 </div>
-                <pre style={{ margin: 0, padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 11, color: "#6366f1", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", lineHeight: 1.7, overflowX: "auto", whiteSpace: "pre" }}>{code}</pre>
+                <pre style={{ margin: 0, padding: "12px 14px", background: "#f4f5f7", borderRadius: 8, border: "1px solid #e4e6e8", fontSize: 11, color: "#1c1e21", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", lineHeight: 1.7, overflowX: "auto", whiteSpace: "pre" }}>{code}</pre>
               </div>
             ))}
           </div>
