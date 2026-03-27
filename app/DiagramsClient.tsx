@@ -129,19 +129,6 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
             </g>
           );
         })}
-        {/* arrows */}
-        {msgs.slice(0, maxM).map((msg, idx) => {
-          const y = LIFE_TOP + 4 + idx * msgGap + msgGap / 2;
-          const x1 = xs[msg.fi], x2 = xs[msg.ti];
-          const dir = x2 > x1 ? 1 : -1;
-          const tip = 3;
-          return (
-            <g key={`m${idx}`}>
-              <line x1={x1} y1={y} x2={x2 - dir * tip} y2={y} stroke="rgba(0,0,0,0.18)" strokeWidth={arrowW} />
-              <polygon points={`${x2 - dir * tip},${y - 2} ${x2},${y} ${x2 - dir * tip},${y + 2}`} fill="rgba(0,0,0,0.18)" />
-            </g>
-          );
-        })}
       </svg>
     );
   }
