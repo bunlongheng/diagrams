@@ -137,8 +137,8 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
           const tip = 3;
           return (
             <g key={`m${idx}`}>
-              <line x1={x1} y1={y} x2={x2 - dir * tip} y2={y} stroke="rgba(255,255,255,0.25)" strokeWidth={arrowW} />
-              <polygon points={`${x2 - dir * tip},${y - 2} ${x2},${y} ${x2 - dir * tip},${y + 2}`} fill="rgba(255,255,255,0.25)" />
+              <line x1={x1} y1={y} x2={x2 - dir * tip} y2={y} stroke="rgba(0,0,0,0.18)" strokeWidth={arrowW} />
+              <polygon points={`${x2 - dir * tip},${y - 2} ${x2},${y} ${x2 - dir * tip},${y + 2}`} fill="rgba(0,0,0,0.18)" />
             </g>
           );
         })}
