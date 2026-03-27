@@ -59,7 +59,7 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   const detectedType = /^sequenceDiagram/i.test(firstLine) ? "sequence"
     : /^(flowchart|graph)\s/i.test(firstLine) ? "flowchart"
     : type;
-  const svgStyle: React.CSSProperties = { display: "block", background: "#f0f1f3", borderRadius: 8 };
+  const svgStyle: React.CSSProperties = { display: "block", background: "#ffffff", borderRadius: 8 };
 
   // ── Sequence — show ALL participants, exact colors matching editor ───────────
   if (detectedType === "sequence") {
@@ -106,8 +106,8 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
           const r = numSize * 0.9 + 1.5; // gap slightly larger than circle radius
           return (
             <g key={`ll${i}`}>
-              <line x1={x} y1={LIFE_TOP} x2={x} y2={LIFE_MID - r} stroke={colors[i]} strokeWidth={0.8} opacity={0.35} />
-              <line x1={x} y1={LIFE_MID + r} x2={x} y2={LIFE_BOT} stroke={colors[i]} strokeWidth={0.8} opacity={0.35} />
+              <line x1={x} y1={LIFE_TOP} x2={x} y2={LIFE_MID - r} stroke={colors[i]} strokeWidth={0.8} opacity={0.5} />
+              <line x1={x} y1={LIFE_MID + r} x2={x} y2={LIFE_BOT} stroke={colors[i]} strokeWidth={0.8} opacity={0.5} />
             </g>
           );
         })}
@@ -124,7 +124,7 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
           const r = numSize * 0.9;
           return (
             <g key={`n${i}`}>
-              <circle cx={x} cy={LIFE_MID} r={r} fill={colors[i]} fillOpacity={0.15} stroke={colors[i]} strokeWidth={0.6} strokeOpacity={0.5} />
+              <circle cx={x} cy={LIFE_MID} r={r} fill={colors[i]} fillOpacity={0.18} stroke={colors[i]} strokeWidth={0.8} strokeOpacity={0.7} />
               <text x={x} y={LIFE_MID + numSize * 0.35} textAnchor="middle" fill={colors[i]} fontSize={numSize} fontWeight="700" fontFamily="system-ui,sans-serif" opacity={0.9}>{i + 1}</text>
             </g>
           );
