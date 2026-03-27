@@ -34,7 +34,7 @@ interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: bo
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
 const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: true, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "icons", icons: {}, boxOverlay: "gloss", autoLayout: true, labelOverrides: {} };
-const DEFAULT_LAYOUT: Layout = { stepHeight: 42, boxWidth: 141, spacing: 250, textSize: 13, margin: 120, vPad: 44 };
+const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 28 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PAL = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#84cc16","#0891b2"];
@@ -329,7 +329,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const idx = new Map(ps.map((p, i) => [p.id, i]));
     // Per-column spacing — only widen the gap between the two participants that need it
     const CHAR_W = FS * 0.62, PILL_PAD = 56;
-    const baseCol = o.autoLayout ? Math.max(BW + 64, 140) : l.spacing;
+    const baseCol = o.autoLayout ? Math.max(BW + 40, 120) : l.spacing;
     const colGap = new Array(Math.max(1, N - 1)).fill(baseCol) as number[];
     if (o.autoLayout) {
         ms.forEach(msg => {
@@ -705,19 +705,25 @@ function SettingsContent({
                 <div>
                     <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Theme</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5 }}>
-                        {(["light", "dark", "monokai"] as const).map(t => (
-                            <button key={t} onClick={() => upd({ theme: t })}
-                                style={{
-                                    padding: mobile ? "8px 4px" : "6px 4px", borderRadius: 8, fontSize: fs(10), fontWeight: 700,
-                                    textTransform: "capitalize", letterSpacing: "0.02em",
-                                    border: opts.theme === t ? `2px solid ${ut.accent}` : `2px solid ${ut.panelBorder}`,
-                                    background: opts.theme === t ? `${ut.accent}14` : ut.overlayBtnBg,
-                                    color: opts.theme === t ? ut.accent : ut.bodyText,
-                                    cursor: "pointer", transition: "all 0.15s",
-                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                                }}
-                            >{t}</button>
-                        ))}
+                        {([
+                            ["light",   "Light",   "#ffffff", "#1e293b", ["#e879f9","#38bdf8","#34d399"]],
+                            ["dark",    "Dark",    "#0f1117", "#e2e8f0", ["#a78bfa","#60a5fa","#34d399"]],
+                            ["monokai", "Monokai", "#272822", "#f8f8f2", ["#f92672","#a6e22e","#e6db74"]],
+                        ] as const).map(([t, label, bg, fg, dots]) => {
+                            const active = opts.theme === t;
+                            return (
+                                <button key={t} onClick={() => upd({ theme: t })} style={{
+                                    padding: 0, borderRadius: 8, border: active ? `2px solid ${ut.accent}` : `2px solid transparent`,
+                                    background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, overflow: "hidden",
+                                }}>
+                                    {/* Swatch */}
+                                    <div style={{ width: "100%", height: 32, borderRadius: 6, background: bg, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, border: `1px solid ${active ? ut.accent : ut.panelBorder}` }}>
+                                        {dots.map((c, i) => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />)}
+                                    </div>
+                                    <span style={{ fontSize: fs(9), fontWeight: 700, color: active ? ut.accent : ut.inactiveTabText, paddingBottom: 3 }}>{label}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -1068,6 +1074,7 @@ function DiagramEditor() {
     const panRef = useRef({ x: 0, y: 0 });
     const spaceHeld = useRef(false);
     const viewWheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingTitleToastRef = useRef<string | null>(null);
     const zoomHudRef = useRef<HTMLDivElement>(null);
     const zoomHudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1090,6 +1097,12 @@ function DiagramEditor() {
             ? code.replace(/^title:?\s+.+$/im, `title: ${t}`)
             : code.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1title: ${t}\n`);
         setCode(newCode);
+        // Immediately patch the SVG text node so the title doesn't flicker back
+        // to the old value while useDeferredValue catches up.
+        if (svgWrapRef.current) {
+            const titleEl = svgWrapRef.current.querySelector<SVGTextElement>("#diagram-title");
+            if (titleEl) titleEl.textContent = t;
+        }
         showToast(`Title saved`, { color: "#7c3aed" });
         if (savedDiagramId && supabaseUser) {
             const supabase = createClient();
@@ -1097,12 +1110,23 @@ function DiagramEditor() {
                 if (error) showToast(`Save failed: ${error.message}`, { color: "#ef4444" });
             });
         }
-    }, [code, savedDiagramId, supabaseUser]);
+    }, [code, savedDiagramId, supabaseUser, svgWrapRef]);
+
+    const clampPan = useCallback((p: { x: number; y: number }): { x: number; y: number } => {
+        const el = canvasRef.current;
+        if (!el) return p;
+        const maxX = el.clientWidth * 0.8;
+        const maxY = el.clientHeight * 0.8;
+        return { x: Math.max(-maxX, Math.min(maxX, p.x)), y: Math.max(-maxY, Math.min(maxY, p.y)) };
+    }, []);
 
     const applyTransform = useCallback((p: { x: number; y: number }, z: number) => {
         if (!svgWrapRef.current) return;
-        svgWrapRef.current.style.transform = `translate(calc(-50% + ${p.x}px), calc(-50% + ${p.y}px)) scale(${z})`;
-    }, []);
+        const cp = clampPan(p);
+        panRef.current = cp;
+        svgWrapRef.current.style.transform = `translate(calc(-50% + ${cp.x}px), calc(-50% + ${cp.y}px)) scale(${z})`;
+    }, [clampPan]);
+
 
     // Sync refs → React state (call on gesture end only)
     const syncTransformState = useCallback(() => {
@@ -1148,19 +1172,14 @@ function DiagramEditor() {
         const onWheel = (e: WheelEvent) => {
             e.preventDefault();
             if (e.ctrlKey || e.metaKey) {
-                // Accumulate zoom toward cursor in refs — no DOM write yet
-                const rect = el.getBoundingClientRect();
-                const dx = e.clientX - (rect.left + rect.width / 2);
-                const dy = e.clientY - (rect.top + rect.height / 2);
+                // Pinch-to-zoom gesture
                 const speed = e.deltaMode === 1 ? 0.036 : 0.0024;
                 const oldZoom = zoomRef.current;
                 const newZoom = parseFloat(Math.min(4, Math.max(0.1, oldZoom - e.deltaY * speed * oldZoom)).toFixed(3));
-                const ratio = newZoom / oldZoom;
                 zoomRef.current = newZoom;
-                panRef.current = { x: dx * (1 - ratio) + panRef.current.x * ratio, y: dy * (1 - ratio) + panRef.current.y * ratio };
                 flashZoomHud(newZoom);
             } else {
-                // Accumulate pan in refs — no DOM write yet
+                // Two-finger trackpad swipe → pan
                 panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
             }
             // Flush to DOM once per frame via rAF — batches all events between frames
@@ -1231,18 +1250,15 @@ function DiagramEditor() {
                 const ratio = d / startPinchDist;
                 const newZoom = Math.min(4, Math.max(0.1, startZoomVal * ratio));
                 const zoomRatio = newZoom / startZoomVal;
-                const newPanX = startPinchMidX * (1 - zoomRatio) + startPinchPanX * zoomRatio;
-                const newPanY = startPinchMidY * (1 - zoomRatio) + startPinchPanY * zoomRatio;
                 zoomRef.current = newZoom;
-                panRef.current = { x: newPanX, y: newPanY };
+                zoomRef.current = newZoom;
                 applyTransform(panRef.current, zoomRef.current);
                 flashZoomHud(newZoom);
             } else if (e.touches.length === 1 && isTouchPanning) {
                 e.preventDefault();
-                panRef.current = {
-                    x: startPanX + (e.touches[0].clientX - startTouchX),
-                    y: startPanY + (e.touches[0].clientY - startTouchY),
-                };
+                const dx = e.touches[0].clientX - startTouchX;
+                const dy = e.touches[0].clientY - startTouchY;
+                panRef.current = { x: startPanX + dx, y: startPanY + dy };
                 applyTransform(panRef.current, zoomRef.current);
             }
         };
@@ -1268,10 +1284,9 @@ function DiagramEditor() {
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (!isDragging.current) return;
-            panRef.current = {
-                x: dragStartPan.current.x + (e.clientX - dragStartMouse.current.x),
-                y: dragStartPan.current.y + (e.clientY - dragStartMouse.current.y),
-            };
+            const dx = e.clientX - dragStartMouse.current.x;
+            const dy = e.clientY - dragStartMouse.current.y;
+            panRef.current = { x: dragStartPan.current.x + dx, y: dragStartPan.current.y + dy };
             applyTransform(panRef.current, zoomRef.current);
         };
         const onUp = () => {
@@ -1296,8 +1311,15 @@ function DiagramEditor() {
 
         const dataParam = params.get("data");
         const urlId = params.get("id");
+        const isNew = params.has("new");
         const isImported = params.get("imported") === "1";
         const isViewMode = params.get("view") === "1";
+
+        // Auto-open code editor at 50% width for new diagrams
+        if (isNew && !isMobile) {
+            setShowCode(true);
+            setCodeWidth(Math.round(window.innerWidth * 0.5));
+        }
 
         // ?data= — inline diagram code (LZ-compressed or plain URI-encoded)
         let decodedData = "";
@@ -1314,18 +1336,21 @@ function DiagramEditor() {
 
         if (urlId) {
             setSavedDiagramId(urlId);
-            try { const s = new Set(JSON.parse(localStorage.getItem("diagram:shared") ?? "[]")); setIsSharedDiagram(s.has(urlId)); } catch {}
+            // is_public loaded from DB response below
         }
 
-        // Always fetch diagram publicly — auth check below decides editor vs presenter
+        // Always fetch diagram — auth check below decides editor vs presenter
         if (urlId) {
             setDiagramLoading(true);
-            fetch(`/api/diagrams/${urlId}`).then(r => r.json()).then(d => {
+            fetch(`/api/diagrams/${urlId}`).then(async r => {
+                if (r.status === 403) { window.location.href = "/"; return; }
+                const d = await r.json();
                 if (d?.code) {
                     setCode(d.code);
                     const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
-                    if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
+                    if (t) pendingTitleToastRef.current = t;
                 }
+                if (typeof d?.is_public === "boolean") setIsSharedDiagram(d.is_public);
                 if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
                 if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
                 setDiagramLoading(false);
@@ -1337,15 +1362,17 @@ function DiagramEditor() {
         supabase.auth.getSession().then(({ data }) => {
             if (data.session) {
                 setSupabaseUser(data.session.user);
+                // Show pending title toast only for authenticated users (not presenter)
+                if (pendingTitleToastRef.current) {
+                    const t = pendingTitleToastRef.current;
+                    pendingTitleToastRef.current = null;
+                    setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
+                }
                 if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV !== "true") {
                     setDiagramLoading(true);
                     void supabase.from("diagrams").select("code, settings").eq("id", urlId).single()
                         .then(({ data: d }) => {
-                            if (d?.code) {
-                                setCode(d.code);
-                                const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
-                                if (t) setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
-                            }
+                            if (d?.code) setCode(d.code);
                             if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
                             if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
                             setDiagramLoading(false);
@@ -1495,8 +1522,9 @@ function DiagramEditor() {
         const onKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement).tagName;
             if (e.key === "Escape") { setShowCode(false); setShowSettings(false); return; }
-            if (tag === "TEXTAREA" || tag === "INPUT") return;
             const mod = e.metaKey || e.ctrlKey;
+            if (mod && e.key === "s") { e.preventDefault(); saveDiagramRef.current?.(); return; }
+            if (tag === "TEXTAREA" || tag === "INPUT") return;
             if (mod && e.key === "0") { e.preventDefault(); fitZoom(); }
             if (mod && e.key === "z" && !e.shiftKey) { const prev = undoStack.current.pop(); if (prev) { e.preventDefault(); setOpts(prev); } }
             if (mod && (e.key === "=" || e.key === "+")) { e.preventDefault(); const nz = parseFloat(Math.min(4, zoomRef.current * 1.2).toFixed(2)); zoomRef.current = nz; applyTransform(panRef.current, nz); setZoom(nz); setFitActive(false); flashZoomHud(nz); }
@@ -1513,6 +1541,7 @@ function DiagramEditor() {
     }, [mounted, fitZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const undoStack = useRef<Opts[]>([]);
+    const saveDiagramRef = useRef<(() => void) | null>(null);
     const saveSettings = useCallback((newOpts: Opts, newLayout: Layout) => {
         if (!savedDiagramId || !supabaseUser) return;
         const supabase = createClient();
@@ -1612,6 +1641,21 @@ function DiagramEditor() {
         }
     }, [supabaseUser, code]);
 
+    // Keep ref in sync so keydown handler (stale closure) can call latest saveDiagram
+    useEffect(() => { saveDiagramRef.current = () => saveDiagram(); }, [saveDiagram]);
+
+    // ── Autosave on code change (update existing record) ──────────────────
+    const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (!supabaseUser || !savedDiagramId || !code.trim()) return;
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(async () => {
+            const supabase = createClient();
+            await supabase.from("diagrams").update({ code }).eq("id", savedDiagramId);
+        }, 1500);
+        return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+    }, [code, savedDiagramId, supabaseUser]);
+
     const buildShareUrl = useCallback(() => {
         if (savedDiagramId) return `${window.location.origin}/d/${savedDiagramId}`;
         return null; // not saved yet
@@ -1660,15 +1704,15 @@ function DiagramEditor() {
 
     const fireConfetti = useCallback(() => {
         import("canvas-confetti").then(({ default: confetti }) => {
-            const end = Date.now() + 3000;
+            const end = Date.now() + 1500;
             const colors = ["#ff595e","#ffca3a","#22c55e","#1982c4","#8ac926","#ff924c","#48cae4","#f97316"];
             let last = 0;
             const burst = (ts: number) => {
-                if (ts - last > 60) {
+                if (ts - last > 50) {
                     last = ts;
-                    confetti({ particleCount: 12, angle: 60, spread: 90, origin: { x: 0, y: 0.5 }, colors });
-                    confetti({ particleCount: 12, angle: 120, spread: 90, origin: { x: 1, y: 0.5 }, colors });
-                    confetti({ particleCount: 9, spread: 110, startVelocity: 40, origin: { x: Math.random(), y: 0 }, colors });
+                    // Snow-like fall from top across the full width
+                    confetti({ particleCount: 8, angle: 270, spread: 60, startVelocity: 12, gravity: 0.9, drift: 1.2, ticks: 180, origin: { x: Math.random(), y: 0 }, colors });
+                    confetti({ particleCount: 8, angle: 270, spread: 60, startVelocity: 14, gravity: 0.9, drift: -1.2, ticks: 180, origin: { x: Math.random(), y: 0 }, colors });
                 }
                 if (Date.now() < end) requestAnimationFrame(burst);
                 else confetti.reset();
@@ -1849,7 +1893,10 @@ function DiagramEditor() {
                         applyTransform(panRef.current, newZoom);
                         flashZoomHud(newZoom);
                     } else {
-                        panRef.current = { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY };
+                        const hw = window.innerWidth / 2, hh = window.innerHeight / 2;
+                        const nx = panRef.current.x - e.deltaX;
+                        const ny = panRef.current.y - e.deltaY;
+                        panRef.current = { x: Math.max(-hw, Math.min(hw, nx)), y: Math.max(-hh, Math.min(hh, ny)) };
                         applyTransform(panRef.current, zoomRef.current);
                     }
                     if (viewWheelTimer.current) clearTimeout(viewWheelTimer.current);
@@ -2167,14 +2214,15 @@ function DiagramEditor() {
                     {/* Share (public link) */}
                     {savedDiagramId && (
                         <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-                            <button onClick={() => {
+                            <button onClick={async () => {
                                 if (isSharedDiagram) {
                                     const url = `${window.location.origin}/d/${savedDiagramId}`;
                                     navigator.clipboard.writeText(url).catch(() => {});
                                     window.open(url, "_blank");
                                     showToast("Link copied — opening preview", { color: "#7c3aed" });
                                 } else {
-                                    try { const s = new Set<string>(JSON.parse(localStorage.getItem("diagram:shared") ?? "[]")); s.add(savedDiagramId); localStorage.setItem("diagram:shared", JSON.stringify([...s])); } catch {}
+                                    const { data: { session } } = await createClient().auth.getSession();
+                                    await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ is_public: true }) });
                                     setIsSharedDiagram(true);
                                     const url = `${window.location.origin}/d/${savedDiagramId}`;
                                     navigator.clipboard.writeText(url).catch(() => {});
@@ -2195,11 +2243,11 @@ function DiagramEditor() {
                                 {!isMobile && (isSharedDiagram ? "Public" : "Share")}
                             </button>
                             {isSharedDiagram && (
-                                <button onClick={() => {
-                                    try { const s = new Set<string>(JSON.parse(localStorage.getItem("diagram:shared") ?? "[]")); s.delete(savedDiagramId); localStorage.setItem("diagram:shared", JSON.stringify([...s])); } catch {}
+                                <button onClick={async () => {
+                                    const { data: { session } } = await createClient().auth.getSession();
+                                    await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ is_public: false }) });
                                     setIsSharedDiagram(false);
                                     showToast("No longer public", { color: "#64748b" });
-                                    setTimeout(() => { window.location.href = "/"; }, 800);
                                 }} style={{
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     width: 20, height: 30, borderRadius: "0 8px 8px 0", border: "none",
@@ -2316,7 +2364,7 @@ function DiagramEditor() {
                 {/* ── Diagram canvas ── */}
                 <div className="flex-1 relative" style={{ background: ut.canvasBg }}>
                     <div ref={canvasRef} className="absolute inset-0 overflow-hidden"
-                        style={{ cursor: isPanning ? "grabbing" : "grab", touchAction: "none" }}
+                        style={{ cursor: "default", touchAction: "none" }}
                         onMouseDown={e => {
                             if ((e.target as HTMLElement).closest("button,#diagram-title")) return;
                             if (opts.autoLayout) upd({ autoLayout: false });

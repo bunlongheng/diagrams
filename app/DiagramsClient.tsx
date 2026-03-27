@@ -471,6 +471,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [renamingDiagram, setRenamingDiagram] = useState<Diagram | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showDocs, setShowDocs] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? "";
 
@@ -658,6 +659,11 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#e8eaf8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
                 <div style={{ fontSize: 11, color: "#5a5c7a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{user.email}</div>
               </div>
+              <button onClick={() => { setShowDocs(true); setShowMenu(false); }}
+                style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", borderTop: "1px solid #2a2b45", cursor: "pointer", fontSize: 13, color: "#c8cadf", fontFamily: "inherit", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#252640")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                <span style={{ fontSize: 14 }}>📋</span> Import formats
+              </button>
               <button onClick={signOut}
                 style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", borderTop: "1px solid #2a2b45", cursor: "pointer", fontSize: 13, color: "#f87171", fontFamily: "inherit", fontWeight: 500 }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#2a1a1a")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>Sign out</button>
@@ -737,6 +743,54 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
               <button onClick={() => setConfirmDeleteId(null)} style={{ padding: "8px 16px", border: "1px solid #2e2f4a", borderRadius: 9, background: "#252640", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "#9ca0c0" }}>Cancel</button>
               <button onClick={() => deleteDiagram(confirmDeleteId)} style={{ padding: "8px 20px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showDocs && (
+        <div onClick={() => setShowDocs(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#1a1b30", borderRadius: 16, padding: 28, width: 540, maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,58,237,0.2)", border: "1px solid #2a2b45" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e8eaf8", margin: 0 }}>Import Formats</h2>
+              <button onClick={() => setShowDocs(false)} style={{ background: "none", border: "none", color: "#5a5c7a", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
+            </div>
+
+            <p style={{ fontSize: 12, color: "#5a5c7a", margin: "0 0 20px" }}>Paste any of these directly on the page or into the code editor. Sequence diagrams are auto-saved; use <kbd style={{ background: "#252640", border: "1px solid #3a3b55", borderRadius: 4, padding: "1px 5px", fontSize: 11, color: "#c8cadf" }}>⌘S</kbd> to save edits.</p>
+
+            {[
+              {
+                label: "Mermaid Sequence Diagram",
+                tag: "Auto-saves on paste",
+                tagColor: "#16a34a",
+                code: `sequenceDiagram\n  participant A as Alice\n  participant B as Bob\n  A->>B: Hello!\n  B-->>A: Hi there\n  Note over A,B: A note\n  loop Every minute\n    A->>B: Ping\n  end\n  alt success\n    B->>A: OK\n  else failure\n    B->>A: Error\n  end`,
+              },
+              {
+                label: "Arrow types",
+                tag: "Syntax",
+                tagColor: "#6366f1",
+                code: `A->B: solid line, no arrow\nA->>B: solid line, arrowhead\nA-->B: dashed, no arrow\nA-->>B: dashed, arrowhead\nA==>B: thick solid`,
+              },
+              {
+                label: "With title & autonumber",
+                tag: "Optional",
+                tagColor: "#7c3aed",
+                code: `sequenceDiagram\n  title: My API Flow\n  autonumber\n  Client->>Server: POST /login\n  Server-->>Client: 200 OK`,
+              },
+              {
+                label: "Markdown fenced block",
+                tag: "Also accepted",
+                tagColor: "#0891b2",
+                code: `\`\`\`mermaid\nsequenceDiagram\n  A->>B: works too\n\`\`\``,
+              },
+            ].map(({ label, tag, tagColor, code }) => (
+              <div key={label} style={{ marginBottom: 18 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#c8cadf" }}>{label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: tagColor, background: `${tagColor}22`, borderRadius: 4, padding: "1px 6px" }}>{tag}</span>
+                </div>
+                <pre style={{ margin: 0, padding: "10px 12px", background: "#12132a", borderRadius: 8, border: "1px solid #2a2b45", fontSize: 11, color: "#a78bfa", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", lineHeight: 1.7, overflowX: "auto", whiteSpace: "pre" }}>{code}</pre>
+              </div>
+            ))}
           </div>
         </div>
       )}
