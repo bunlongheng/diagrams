@@ -46,12 +46,24 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({
+      error: "Invalid JSON body",
+      fix: "Send Content-Type: application/json with a valid JSON body",
+      example: { title: "My Diagram", code: "sequenceDiagram\n  A->>B: hello", diagramType: "sequence" },
+    }, { status: 400 });
   }
 
   const { title, code, diagramType = "sequence" } = body;
-  if (!title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
-  if (!code?.trim())  return NextResponse.json({ error: "code is required" }, { status: 400 });
+  if (!title?.trim()) return NextResponse.json({
+    error: "title is required",
+    fix: "Add a non-empty \"title\" field to your JSON body",
+    example: { title: "My Diagram", code: "sequenceDiagram\n  A->>B: hello", diagramType: "sequence" },
+  }, { status: 400 });
+  if (!code?.trim()) return NextResponse.json({
+    error: "code is required",
+    fix: "Add a non-empty \"code\" field containing valid mermaid syntax",
+    example: { title: "My Diagram", code: "sequenceDiagram\n  A->>B: hello", diagramType: "sequence" },
+  }, { status: 400 });
 
   // ── Resolve owner user_id from ALLOWED_EMAIL ──────────────────────────────
   const ownerEmail = process.env.ALLOWED_EMAIL;
