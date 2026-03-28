@@ -374,17 +374,28 @@ function AIThinkingOverlay() {
     const W = canvas.width = window.innerWidth;
     const H = canvas.height = window.innerHeight;
 
-    const particles = Array.from({ length: 140 }, () => ({
+    // Floating background particles
+    const particles = Array.from({ length: 100 }, () => ({
       x: Math.random() * W,
       y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.7,
-      vy: (Math.random() - 0.5) * 0.7,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.5) * 0.6,
       text: pickToken(),
       color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      alpha: Math.random() * 0.55 + 0.12,
+      alpha: Math.random() * 0.4 + 0.08,
       size: Math.floor(Math.random() * 8) + 9,
       tickNext: Math.floor(Math.random() * 50),
       isWord: Math.random() < 0.35,
+    }));
+
+    // Center stacked big words — huge / large / medium layers
+    const CENTER_SIZES = [110, 72, 48, 32, 22];
+    const centerWords = CENTER_SIZES.map(size => ({
+      text: pickToken(),
+      size,
+      alpha: 0.12 + (size / 110) * 0.22,
+      tickNext: Math.floor(Math.random() * 120) + 60,
+      offsetY: (CENTER_SIZES.indexOf(size) - 2) * size * 0.55,
     }));
 
     let t = 0;
@@ -397,26 +408,27 @@ function AIThinkingOverlay() {
       if (phraseTimer > 80) { phraseTimer = 0; phraseIdx = (phraseIdx + 1) % LOADING_PHRASES.length; }
 
       ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(8,8,16,0.92)";
+      ctx.fillStyle = "rgba(8,8,16,0.94)";
       ctx.fillRect(0, 0, W, H);
 
-      // breathing glow orb — center only, no label near it
-      const pulse = 0.7 + 0.3 * Math.sin(t * 0.04);
-      const r = 88 * pulse;
-      const grd = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r * 2.8);
-      grd.addColorStop(0, `rgba(220,220,220,${0.18 * pulse})`);
-      grd.addColorStop(0.5, `rgba(160,160,160,${0.08 * pulse})`);
-      grd.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(W / 2, H / 2, r * 2.8, 0, Math.PI * 2); ctx.fill();
+      // ── Center stacked white text (replacing orb) ──
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const cw of centerWords) {
+        if (--cw.tickNext <= 0) {
+          cw.text = pickToken();
+          cw.tickNext = Math.floor(Math.random() * 140) + 60;
+        }
+        const pulse = 0.85 + 0.15 * Math.sin(t * 0.03 + cw.size);
+        ctx.globalAlpha = cw.alpha * pulse;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `700 ${cw.size}px monospace`;
+        ctx.fillText(cw.text, W / 2, H / 2 + cw.offsetY);
+      }
+      ctx.globalAlpha = 1;
+      ctx.textBaseline = "alphabetic";
 
-      const core = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r);
-      core.addColorStop(0, `rgba(255,255,255,${0.55 * pulse})`);
-      core.addColorStop(1, "rgba(180,180,180,0)");
-      ctx.fillStyle = core;
-      ctx.beginPath(); ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2); ctx.fill();
-
-      // floating tokens + chars — avoid center circle
+      // floating tokens + chars — avoid center zone
       for (const p of particles) {
         p.x += p.vx; p.y += p.vy;
         if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
@@ -428,18 +440,19 @@ function AIThinkingOverlay() {
           p.tickNext = Math.floor(Math.random() * 70) + 25;
         }
         const dist = Math.hypot(p.x - W / 2, p.y - H / 2);
-        if (dist < r * 1.1) continue; // skip particles inside orb
+        if (dist < 160) continue;
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
         ctx.font = `${p.isWord ? "700" : "400"} ${p.size}px monospace`;
+        ctx.textAlign = "left";
         ctx.fillText(p.text, p.x, p.y);
       }
       ctx.globalAlpha = 1;
 
-      // rotating phrase — bottom center, clear of orb
+      // rotating phrase — bottom center
       const phrase = LOADING_PHRASES[phraseIdx];
       ctx.font = "500 13px system-ui,sans-serif";
-      ctx.fillStyle = `rgba(160,170,220,${0.75 + 0.25 * pulse})`;
+      ctx.fillStyle = `rgba(160,170,220,0.8)`;
       ctx.textAlign = "center";
       ctx.fillText(phrase, W / 2, H - 48);
 
