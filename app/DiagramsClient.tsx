@@ -339,7 +339,30 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
 }
 
 // ── AI Thinking animation ─────────────────────────────────────────────────────
+const AI_TOKENS = [
+  "tokens","context","embedding","inference","neural","attention","transformer",
+  "gradient","weight","latent","vector","semantic","entropy","logit","softmax",
+  "decode","encode","tensor","backprop","synapse","neuron","pattern","classify",
+  "predict","generate","reason","analyze","parse","query","memory","chain",
+  "cluster","feature","kernel","dropout","sigmoid","relu","normalize","sample",
+  "prompt","stream","output","input","layer","epoch","batch","loss","node",
+  "graph","recursion",
+];
 const AI_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*<>/\\|{}[]";
+const PARTICLE_COLORS = [
+  "#f87171","#fb923c","#fbbf24","#34d399","#38bdf8","#818cf8","#e879f9",
+  "#f472b6","#a3e635","#2dd4bf","#60a5fa","#c084fc",
+];
+function pickToken() {
+  return Math.random() < 0.35
+    ? AI_TOKENS[Math.floor(Math.random() * AI_TOKENS.length)]
+    : AI_CHARS[Math.floor(Math.random() * AI_CHARS.length)];
+}
+const LOADING_PHRASES = [
+  "Thinking…","Tokenizing…","Building graph…","Reasoning…","Encoding…",
+  "Mapping flow…","Inferring…","Generating…","Assembling…","Almost there…",
+];
+
 function AIThinkingOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number>(0);
@@ -351,66 +374,74 @@ function AIThinkingOverlay() {
     const W = canvas.width = window.innerWidth;
     const H = canvas.height = window.innerHeight;
 
-    const particles = Array.from({ length: 120 }, () => ({
+    const particles = Array.from({ length: 140 }, () => ({
       x: Math.random() * W,
       y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.6,
-      vy: (Math.random() - 0.5) * 0.6,
-      char: AI_CHARS[Math.floor(Math.random() * AI_CHARS.length)],
-      alpha: Math.random() * 0.5 + 0.1,
-      size: Math.floor(Math.random() * 10) + 9,
-      tickNext: Math.floor(Math.random() * 40),
+      vx: (Math.random() - 0.5) * 0.7,
+      vy: (Math.random() - 0.5) * 0.7,
+      text: pickToken(),
+      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+      alpha: Math.random() * 0.55 + 0.12,
+      size: Math.floor(Math.random() * 8) + 9,
+      tickNext: Math.floor(Math.random() * 50),
+      isWord: Math.random() < 0.35,
     }));
 
     let t = 0;
+    let phraseIdx = 0;
+    let phraseTimer = 0;
+
     const draw = () => {
       t++;
+      phraseTimer++;
+      if (phraseTimer > 80) { phraseTimer = 0; phraseIdx = (phraseIdx + 1) % LOADING_PHRASES.length; }
+
       ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(10,10,18,0.88)";
+      ctx.fillStyle = "rgba(8,8,16,0.92)";
       ctx.fillRect(0, 0, W, H);
 
-      // breathing glow orb
+      // breathing glow orb — center only, no label near it
       const pulse = 0.7 + 0.3 * Math.sin(t * 0.04);
-      const r = 90 * pulse;
-      const grd = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r * 2.5);
-      grd.addColorStop(0, `rgba(100,120,255,${0.22 * pulse})`);
-      grd.addColorStop(0.5, `rgba(80,60,200,${0.12 * pulse})`);
+      const r = 88 * pulse;
+      const grd = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r * 2.8);
+      grd.addColorStop(0, `rgba(110,130,255,${0.28 * pulse})`);
+      grd.addColorStop(0.5, `rgba(80,60,200,${0.14 * pulse})`);
       grd.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(W / 2, H / 2, r * 2.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(W / 2, H / 2, r * 2.8, 0, Math.PI * 2); ctx.fill();
 
-      // inner bright core
       const core = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r);
-      core.addColorStop(0, `rgba(180,190,255,${0.55 * pulse})`);
+      core.addColorStop(0, `rgba(200,210,255,${0.6 * pulse})`);
       core.addColorStop(1, "rgba(80,80,255,0)");
       ctx.fillStyle = core;
-      ctx.beginPath();
-      ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2); ctx.fill();
 
-      // floating chars
+      // floating tokens + chars — avoid center circle
       for (const p of particles) {
         p.x += p.vx; p.y += p.vy;
         if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
         if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-        if (--p.tickNext <= 0) { p.char = AI_CHARS[Math.floor(Math.random() * AI_CHARS.length)]; p.tickNext = Math.floor(Math.random() * 60) + 20; }
+        if (--p.tickNext <= 0) {
+          p.text = pickToken();
+          p.isWord = p.text.length > 1;
+          p.color = PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)];
+          p.tickNext = Math.floor(Math.random() * 70) + 25;
+        }
         const dist = Math.hypot(p.x - W / 2, p.y - H / 2);
-        const glow = Math.max(0, 1 - dist / (W * 0.4));
-        ctx.globalAlpha = p.alpha + glow * 0.4;
-        ctx.fillStyle = `hsl(${220 + glow * 40},80%,${70 + glow * 20}%)`;
-        ctx.font = `${p.size}px monospace`;
-        ctx.fillText(p.char, p.x, p.y);
+        if (dist < r * 1.1) continue; // skip particles inside orb
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.font = `${p.isWord ? "700" : "400"} ${p.size}px monospace`;
+        ctx.fillText(p.text, p.x, p.y);
       }
       ctx.globalAlpha = 1;
 
-      // center label
-      const label = "Generating diagram" + ".".repeat(1 + (Math.floor(t / 18) % 3));
-      ctx.font = "600 15px system-ui,sans-serif";
-      ctx.fillStyle = `rgba(200,210,255,${0.8 + 0.2 * pulse})`;
+      // rotating phrase — bottom center, clear of orb
+      const phrase = LOADING_PHRASES[phraseIdx];
+      ctx.font = "500 13px system-ui,sans-serif";
+      ctx.fillStyle = `rgba(160,170,220,${0.75 + 0.25 * pulse})`;
       ctx.textAlign = "center";
-      ctx.fillText(label, W / 2, H / 2 + r * 1.6);
+      ctx.fillText(phrase, W / 2, H - 48);
 
       frameRef.current = requestAnimationFrame(draw);
     };
