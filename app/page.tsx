@@ -477,8 +477,8 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             parts.push(`<line x1="${x+IW-1}" y1="${y+4}" x2="${x+IW-1}" y2="${y+BH-4}" stroke="white" stroke-opacity="0.35" stroke-width="1"/>`);
             // Icon centered in white section, colored stroke
             parts.push(renderIcon(iconKey, x + IW / 2, y + BH / 2, ISIZE, pColor));
-            // Label text in remaining colored area
-            parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${BOX_FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
+            // Label text in remaining colored area — strip emoji if icon is shown
+            parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${BOX_FS}" font-weight="700" fill="${th.labelFill}">${esc(labelText)}</text>`);
         } else {
             parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${BOX_FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         }
