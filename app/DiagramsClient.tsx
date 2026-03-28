@@ -596,17 +596,19 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
 
   const handleAICreated = useCallback((d: Diagram) => {
     setShowAIPrompt(false);
-    // Add diagram directly to state (don't wait for realtime)
+    // Add diagram to state first, then confetti after render
     setDiagrams(prev => prev.some(x => x.id === d.id) ? prev : [d, ...prev]);
     setFavs(prev => new Set([...prev, d.id]));
-    // confetti burst
-    const end = Date.now() + 1500;
-    const frame = () => {
-      confetti({ particleCount: 6, angle: 270, spread: 120, startVelocity: 14, gravity: 0.9, drift: (Math.random() - 0.5) * 1.2, ticks: 180, origin: { x: Math.random(), y: 0 }, colors: ["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6"] });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
     showToast(`✦ "${d.title}" ready!`, { color: "#1c1e21" });
+    // Wait for the card to paint before confetti
+    setTimeout(() => {
+      const end = Date.now() + 1500;
+      const frame = () => {
+        confetti({ particleCount: 6, angle: 270, spread: 120, startVelocity: 14, gravity: 0.9, drift: (Math.random() - 0.5) * 1.2, ticks: 180, origin: { x: Math.random(), y: 0 }, colors: ["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6"] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    }, 400);
   }, []);
   const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? "";
 
