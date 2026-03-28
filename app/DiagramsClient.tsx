@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CuteToast, showToast } from "@/app/CuteToast";
 import type { User } from "@supabase/supabase-js";
 import confetti from "canvas-confetti";
+import { Bot, Plug, Briefcase, User as UserIcon, FlaskConical, Clipboard, GraduationCap, Lightbulb, Rocket, Star, Heart, Tag } from "lucide-react";
 
 type Diagram = {
   id: string; title: string; slug: string;
@@ -540,6 +541,17 @@ const TAG_PALETTE = [
   { bg: "#fff1f2", text: "#be123c", border: "#fda4af" }, // rose
   { bg: "#f0f9ff", text: "#0369a1", border: "#7dd3fc" }, // sky
 ];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TAG_ICONS: Record<string, React.ComponentType<any>> = {
+  AI: Bot, API: Plug, Work: Briefcase, Personal: UserIcon,
+  Research: FlaskConical, Pasted: Clipboard, Learning: GraduationCap,
+  Idea: Lightbulb, Project: Rocket, Favorite: Star, Love: Heart,
+};
+function TagIcon({ tag, size = 10 }: { tag: string; size?: number }) {
+  const Icon = TAG_ICONS[tag] ?? Tag;
+  return <Icon size={size} strokeWidth={2.5} style={{ flexShrink: 0 }} />;
+}
+
 function buildTagColorMap(tags: string[]): Map<string, typeof TAG_PALETTE[0]> {
   const map = new Map<string, typeof TAG_PALETTE[0]>();
   [...tags].sort().forEach((t, i) => map.set(t, TAG_PALETTE[i % TAG_PALETTE.length]));
@@ -578,7 +590,8 @@ function TagModal({ diagram, onSave, onClose, tagColorMap, allKnownTags }: { dia
             const s = tagColorMap.get(t) ?? TAG_PALETTE[allOptions.indexOf(t) % TAG_PALETTE.length];
             return (
               <button key={t} onClick={() => active ? remove(t) : add(t)}
-                style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.bg : "#fff", color: s.text, opacity: active ? 1 : 0.55, transition: "opacity 0.12s, background 0.12s", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                style={{ padding: "3px 10px 3px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.text : "#fff", color: active ? "#fff" : s.text, opacity: active ? 1 : 0.55, transition: "all 0.12s", fontFamily: "inherit", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <TagIcon tag={t} size={10} />
                 {t}
               </button>
             );
@@ -686,7 +699,7 @@ function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShar
       {tags.length > 0 && (
         <div style={{ padding: "0 13px 8px", display: "flex", gap: 4, flexWrap: "wrap" }} onClick={e => { e.stopPropagation(); onTag(); }}>
           {tags.map(t => { const s = tagColorMap.get(t) ?? TAG_PALETTE[0]; return (
-            <span key={t} style={{ fontSize: 6, fontWeight: 700, padding: "1px 4px", borderRadius: 20, background: s.bg, color: s.text, border: `1px solid ${s.border}`, cursor: "pointer", letterSpacing: "0.02em", lineHeight: 1.4 }}>{t}</span>
+            <span key={t} style={{ fontSize: 6, fontWeight: 700, padding: "1px 4px 1px 3px", borderRadius: 20, background: s.bg, color: s.text, border: `1px solid ${s.border}`, cursor: "pointer", letterSpacing: "0.02em", lineHeight: 1.4, display: "inline-flex", alignItems: "center", gap: 2 }}><TagIcon tag={t} size={6} />{t}</span>
           ); })}
         </div>
       )}
@@ -1020,13 +1033,15 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
           </button>
           {allTags.map(t => { const s = tagColorMap.get(t)!; const active = activeTag === t; const count = tagCounts.get(t) ?? 0; return (
             <button key={t} onClick={() => setActiveTag(active ? null : t)}
-              style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.bg : `${s.bg}99`, color: s.text, flexShrink: 0, transition: "all 0.12s", opacity: active ? 1 : 0.6, display: "flex", alignItems: "center", gap: 5 }}>
-              {t} <span style={{ background: `${s.text}22`, borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{count}</span>
+              style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.text : "#fff", color: active ? "#fff" : s.text, flexShrink: 0, transition: "all 0.15s", opacity: active ? 1 : 0.65, display: "flex", alignItems: "center", gap: 4 }}>
+              <TagIcon tag={t} size={10} />
+              {t} <span style={{ background: active ? "rgba(255,255,255,0.25)" : `${s.text}22`, borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{count}</span>
             </button>
           ); })}
           <button onClick={() => setActiveTag(activeTag === "__no_tag__" ? null : "__no_tag__")}
-            style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${activeTag === "__no_tag__" ? "#8a8d91" : "#e4e6e8"}`, background: activeTag === "__no_tag__" ? "#f0f1f3" : "#f4f5f7", color: "#65676b", flexShrink: 0, transition: "all 0.12s", display: "flex", alignItems: "center", gap: 5 }}>
-            No Tag <span style={{ background: "#e4e6e8", borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{diagrams.filter(d => (d.tags ?? []).length === 0).length}</span>
+            style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${activeTag === "__no_tag__" ? "#8a8d91" : "#e4e6e8"}`, background: activeTag === "__no_tag__" ? "#65676b" : "#fff", color: activeTag === "__no_tag__" ? "#fff" : "#65676b", flexShrink: 0, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 4 }}>
+            <Tag size={10} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+            No Tag <span style={{ background: activeTag === "__no_tag__" ? "rgba(255,255,255,0.25)" : "#e4e6e8", borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{diagrams.filter(d => (d.tags ?? []).length === 0).length}</span>
           </button>
         </div>
       )}
