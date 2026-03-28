@@ -773,6 +773,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   const [renamingDiagram, setRenamingDiagram] = useState<Diagram | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showDocs, setShowDocs] = useState(false);
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const [showAIPrompt, setShowAIPrompt] = useState(false);
   const [taggingDiagram, setTaggingDiagram] = useState<Diagram | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -1200,7 +1201,13 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
                   <span style={{ fontSize: 12, fontWeight: 600, color: "#1c1e21" }}>{label}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: tagColor, background: `${tagColor}14`, borderRadius: 4, padding: "2px 7px" }}>{tag}</span>
                 </div>
-                <pre style={{ margin: 0, padding: "12px 14px", background: "#f4f5f7", borderRadius: 8, border: "1px solid #e4e6e8", fontSize: 11, color: "#1c1e21", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", lineHeight: 1.7, overflowX: "auto", whiteSpace: "pre" }}>{code}</pre>
+                <div style={{ position: "relative" }}>
+                  <pre style={{ margin: 0, padding: "12px 14px", background: "#f4f5f7", borderRadius: 8, border: "1px solid #e4e6e8", fontSize: 11, color: "#1c1e21", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", lineHeight: 1.7, overflowX: "auto", whiteSpace: "pre" }}>{code}</pre>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(code); setCopiedLabel(label); setTimeout(() => setCopiedLabel(null), 2000); }}
+                    style={{ position: "absolute", top: 8, right: 8, background: copiedLabel === label ? "#22c55e" : "#ffffff", border: "1px solid #e4e6e8", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600, color: copiedLabel === label ? "#ffffff" : "#65676b", cursor: "pointer", transition: "all 0.15s" }}
+                  >{copiedLabel === label ? "Copied!" : "Copy"}</button>
+                </div>
               </div>
             ))}
           </div>
