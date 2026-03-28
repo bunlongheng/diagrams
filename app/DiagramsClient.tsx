@@ -917,7 +917,35 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     setDeleting(null);
   }
 
-  const allTags = [...new Set(diagrams.flatMap(d => d.tags ?? []))].sort();
+  const rawTags = [...new Set(diagrams.flatMap(d => d.tags ?? []))];
+  const [tagOrder, setTagOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("tag-order") ?? "[]"); } catch { return []; }
+  });
+  const allTags = useMemo(() => {
+    const set = new Set(rawTags);
+    const ordered = tagOrder.filter(t => set.has(t));
+    const rest = rawTags.filter(t => !ordered.includes(t)).sort();
+    return [...ordered, ...rest];
+  }, [rawTags.join(","), tagOrder.join(",")]);
+
+  const dragTag = useRef<string | null>(null);
+  function onTagDragStart(t: string) { dragTag.current = t; }
+  function onTagDragOver(e: React.DragEvent, t: string) {
+    e.preventDefault();
+    if (!dragTag.current || dragTag.current === t) return;
+    setTagOrder(prev => {
+      const base = allTags.filter(x => prev.includes(x) || rawTags.includes(x));
+      const next = [...new Set(base)];
+      const from = next.indexOf(dragTag.current!);
+      const to = next.indexOf(t);
+      if (from < 0 || to < 0) return prev;
+      next.splice(from, 1);
+      next.splice(to, 0, dragTag.current!);
+      localStorage.setItem("tag-order", JSON.stringify(next));
+      return next;
+    });
+  }
+
   const tagColorMap = useMemo(() => buildTagColorMap(allTags), [allTags.join(",")]);
   const tagCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -1033,7 +1061,8 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
           </button>
           {allTags.map(t => { const s = tagColorMap.get(t)!; const active = activeTag === t; const count = tagCounts.get(t) ?? 0; return (
             <button key={t} onClick={() => setActiveTag(active ? null : t)}
-              style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.border : "#fff", color: s.text, flexShrink: 0, transition: "all 0.15s", opacity: active ? 1 : 0.65, display: "flex", alignItems: "center", gap: 4 }}>
+              draggable onDragStart={() => onTagDragStart(t)} onDragOver={e => onTagDragOver(e, t)} onDragEnd={() => { dragTag.current = null; }}
+              style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "grab", border: `1.5px solid ${s.border}`, background: active ? s.border : "#fff", color: s.text, flexShrink: 0, transition: "all 0.15s", opacity: active ? 1 : 0.65, display: "flex", alignItems: "center", gap: 4 }}>
               <TagIcon tag={t} size={10} />
               {t} <span style={{ background: active ? "rgba(255,255,255,0.25)" : `${s.text}22`, borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{count}</span>
             </button>
