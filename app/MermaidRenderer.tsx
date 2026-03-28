@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 interface Props {
   code: string;
   dark?: boolean;
+  onDims?: (w: number, h: number) => void;
 }
 
-export default function MermaidRenderer({ code, dark = false }: Props) {
+export default function MermaidRenderer({ code, dark = false, onDims }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,20 +38,21 @@ export default function MermaidRenderer({ code, dark = false }: Props) {
           edgeLabelBackground: "#1e2130",
           fontFamily: "Inter, system-ui, sans-serif",
         } : {
-          primaryColor: "#f8fafc",
+          primaryColor: "#f1f5f9",
           primaryTextColor: "#1c1e21",
           primaryBorderColor: "#e2e8f0",
-          lineColor: "#94a3b8",
-          secondaryColor: "#f1f5f9",
-          tertiaryColor: "#e8edf5",
+          lineColor: "#c0c8d4",
+          secondaryColor: "#f8fafc",
+          tertiaryColor: "#f1f5f9",
           background: "#ffffff",
           mainBkg: "#f8fafc",
-          nodeBorder: "#cbd5e1",
-          clusterBkg: "#f1f5f9",
+          nodeBorder: "#e2e8f0",
+          clusterBkg: "#f8fafc",
           titleColor: "#1c1e21",
           edgeLabelBackground: "#ffffff",
           fontFamily: "Inter, system-ui, sans-serif",
           fontSize: "14px",
+          lineWidth: "1px",
         },
       });
 
@@ -61,11 +63,23 @@ export default function MermaidRenderer({ code, dark = false }: Props) {
           ref.current.innerHTML = svg;
           const svgEl = ref.current.querySelector("svg");
           if (svgEl) {
+            const w = parseFloat(svgEl.getAttribute("width") || "0");
+            const h = parseFloat(svgEl.getAttribute("height") || "0");
             svgEl.removeAttribute("width");
             svgEl.removeAttribute("height");
             svgEl.style.width = "100%";
             svgEl.style.height = "100%";
             svgEl.style.maxWidth = "100%";
+            // thinner lines, remove green borders
+            svgEl.querySelectorAll(".mindmap-node-label, .mindmap-node").forEach((el) => {
+              (el as HTMLElement).style.stroke = "none";
+              (el as HTMLElement).style.border = "none";
+            });
+            if (w && h && onDims) onDims(w, h);
+            else if (onDims) {
+              const bb = svgEl.getBoundingClientRect();
+              if (bb.width && bb.height) onDims(bb.width, bb.height);
+            }
           }
           setError(null);
         }

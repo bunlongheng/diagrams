@@ -1057,6 +1057,7 @@ function DiagramEditor() {
     const [copiedShare, setCopiedShare] = useState(false);
     const [diagramLoading, setDiagramLoading] = useState(false);
     const [hasFit, setHasFit] = useState(false);
+    const [mermaidDims, setMermaidDims] = useState<{ w: number; h: number } | null>(null);
     const [fitActive, setFitActive] = useState(true);
     const fitActiveRef = useRef(true);
     const [opts, setOpts] = useState<Opts>(DEFAULT_OPTS);
@@ -1469,15 +1470,14 @@ function DiagramEditor() {
     const activeSvg = svg;
 
     const svgDims = useMemo(() => {
+        if (!isSequence) return mermaidDims;
         if (!activeSvg) return null;
-        // Match width and height independently (order and adjacency don't matter)
         const w = activeSvg.match(/\bwidth="(\d+(?:\.\d+)?)"/)?.[1];
         const h = activeSvg.match(/\bheight="(\d+(?:\.\d+)?)"/)?.[1];
         if (w && h) return { w: parseFloat(w), h: parseFloat(h) };
-        // Fall back to viewBox — grab the last two numbers (W H), handles any origin offset
         const vb = activeSvg.match(/viewBox="[^"]*\s(\d+(?:\.\d+)?)\s(\d+(?:\.\d+)?)"/);
         return vb ? { w: parseFloat(vb[1]), h: parseFloat(vb[2]) } : null;
-    }, [activeSvg]);
+    }, [activeSvg, isSequence, mermaidDims]);
     // Inline sync avoids SWC/Linux minifier TDZ bug (useEffect([svgDims]) gets hoisted before declaration)
 
 
@@ -1926,9 +1926,9 @@ function DiagramEditor() {
                 )}
 
                 {mounted && !isSequence && deferredCode.trim() && (
-                    <div ref={svgWrapRef} style={{ position: "absolute", inset: 0, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-                        <div style={{ background: "#ffffff", borderRadius: 18, boxShadow: "0 4px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)", padding: "48px 56px", minWidth: 480, maxWidth: "100%", width: "100%" }}>
-                            <MermaidRenderer code={deferredCode} dark={opts.theme === "dark"} />
+                    <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}>
+                        <div style={{ background: "#ffffff", borderRadius: 18, boxShadow: "0 4px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)", padding: "48px 56px", minWidth: 480 }}>
+                            <MermaidRenderer code={deferredCode} dark={opts.theme === "dark"} onDims={(w, h) => { setMermaidDims({ w: w + 112, h: h + 96 }); setHasFit(false); }} />
                         </div>
                     </div>
                 )}
@@ -2415,9 +2415,9 @@ function DiagramEditor() {
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
                         ) : mounted && !isSequence && deferredCode.trim() ? (
-                            <div ref={svgWrapRef} style={{ position: "absolute", inset: 0, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
-                                <div style={{ background: "#ffffff", borderRadius: 18, boxShadow: "0 4px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)", padding: "48px 56px", minWidth: 480, maxWidth: "100%", width: "100%" }}>
-                                    <MermaidRenderer code={deferredCode} dark={opts.theme === "dark"} />
+                            <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}>
+                                <div style={{ background: "#ffffff", borderRadius: 18, boxShadow: "0 4px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)", padding: "48px 56px", minWidth: 480 }}>
+                                    <MermaidRenderer code={deferredCode} dark={opts.theme === "dark"} onDims={(w, h) => { setMermaidDims({ w: w + 112, h: h + 96 }); setHasFit(false); }} />
                                 </div>
                             </div>
                         ) : (
