@@ -571,7 +571,7 @@ function TagModal({ diagram, onSave, onClose }: { diagram: Diagram; onSave: (tag
               <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 8px 4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: s.bg, color: s.text, border: `1.5px solid ${s.border}` }}>
                 {t}
                 <button onClick={() => remove(t)} title={`Remove ${t}`}
-                  style={{ width: 18, height: 18, borderRadius: "50%", background: s.text, border: "none", cursor: "pointer", color: "#fff", fontSize: 13, lineHeight: "18px", textAlign: "center", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
+                  style={{ width: 16, height: 16, borderRadius: "50%", background: s.text, border: "none", cursor: "pointer", color: "#fff", fontSize: 11, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, lineHeight: 1 }}>×</button>
               </span>
             ); })}
           </div>
@@ -831,9 +831,11 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   }
 
   async function saveTags(id: string, tags: string[]) {
-    await createClient().from("diagrams").update({ tags }).eq("id", id);
+    const { error } = await createClient().from("diagrams").update({ tags }).eq("id", id);
+    if (error) { showToast(`Failed to save tags: ${error.message}`, { color: "#ef4444" }); return; }
     setDiagrams(prev => prev.map(d => d.id === id ? { ...d, tags } : d));
     setTaggingDiagram(null);
+    showToast(tags.length ? `Tags saved: ${tags.join(", ")}` : "Tags cleared", { color: "#1c1e21" });
   }
 
   function signOut() {
