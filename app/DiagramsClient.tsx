@@ -372,8 +372,14 @@ function AIThinkingOverlay() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const W = canvas.width = window.innerWidth;
-    const H = canvas.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.scale(dpr, dpr);
 
     // Floating background particles
     const particles = Array.from({ length: 100 }, () => ({
