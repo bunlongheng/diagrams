@@ -8,6 +8,8 @@ import Prism from "prismjs";
 import { QRCodeSVG } from "qrcode.react";
 import DiagramsShell from "./DiagramsShell";
 import LZString from "lz-string";
+import dynamic from "next/dynamic";
+const MermaidRenderer = dynamic(() => import("./MermaidRenderer"), { ssr: false });
 
 // ── Sequence diagram Prism grammar ────────────────────────────────────────────
 Prism.languages.sequence = {
@@ -1917,10 +1919,16 @@ function DiagramEditor() {
                 }}
             >
 
-                {mounted && activeSvg && (
+                {mounted && isSequence && activeSvg && (
                     <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}
                         dangerouslySetInnerHTML={{ __html: activeSvg }}
                     />
+                )}
+
+                {mounted && !isSequence && deferredCode.trim() && (
+                    <div ref={svgWrapRef} style={{ position: "absolute", inset: 0, overflow: "auto", padding: 40 }}>
+                        <MermaidRenderer code={deferredCode} theme={opts.theme === "dark" ? "dark" : "default"} />
+                    </div>
                 )}
 
                 {/* Zoom HUD */}
@@ -2391,7 +2399,7 @@ function DiagramEditor() {
                             if ((e.target as HTMLElement).closest("#diagram-title")) return;
                         }}
                     >
-                        {mounted && activeSvg ? (
+                        {mounted && isSequence && activeSvg ? (
                             <div
                                 ref={svgWrapRef}
                                 style={{
@@ -2404,6 +2412,10 @@ function DiagramEditor() {
                                 }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
+                        ) : mounted && !isSequence && deferredCode.trim() ? (
+                            <div ref={svgWrapRef} style={{ position: "absolute", inset: 0, overflow: "auto", padding: 40 }}>
+                                <MermaidRenderer code={deferredCode} theme={opts.theme === "dark" ? "dark" : "default"} />
+                            </div>
                         ) : (
                             <div className="flex items-center justify-center h-full">
                                 {mounted && (
