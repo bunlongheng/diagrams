@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { title, code, diagramType } = await req.json();
+  if (!title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
   if (!code?.trim()) return NextResponse.json({ error: "code is required" }, { status: 400 });
   const admin = createAdminClient();
   const baseSlug = toSlug(title || "untitled");

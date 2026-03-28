@@ -15,8 +15,10 @@ Given a user prompt, return ONLY a valid JSON object — no markdown, no explana
   "diagramType": "sequence"
 }
 
-Rules for the code field:
-- Always start with: ---\\ntitle: <title>\\n---\\nsequenceDiagram
+CRITICAL rules:
+- "title" is REQUIRED — always provide a short, descriptive title (3-6 words)
+- "code" is REQUIRED — never return empty code
+- code must always start with: ---\\ntitle: <title>\\n---\\nsequenceDiagram
 - Use participant aliases with emoji icons, e.g.: participant U as 🧑 User
 - Use ->> for requests, -->> for responses
 - Max 20 messages, keep it clear and readable
