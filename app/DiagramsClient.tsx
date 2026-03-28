@@ -422,7 +422,7 @@ function AIThinkingOverlay() {
 }
 
 // ── AI Prompt modal ────────────────────────────────────────────────────────────
-function AIPromptModal({ onClose, onCreated }: { onClose: () => void; onCreated: (d: { id: string; title: string }) => void }) {
+function AIPromptModal({ onClose, onCreated }: { onClose: () => void; onCreated: (d: Diagram) => void }) {
   const [prompt, setPrompt] = useState("");
   const [thinking, setThinking] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -594,8 +594,11 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   const [showAIPrompt, setShowAIPrompt] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleAICreated = useCallback((d: { id: string; title: string }) => {
+  const handleAICreated = useCallback((d: Diagram) => {
     setShowAIPrompt(false);
+    // Add diagram directly to state (don't wait for realtime)
+    setDiagrams(prev => prev.some(x => x.id === d.id) ? prev : [d, ...prev]);
+    setFavs(prev => new Set([...prev, d.id]));
     // confetti burst
     const end = Date.now() + 1500;
     const frame = () => {
