@@ -461,6 +461,43 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  // ── Realtime: listen for AI-created diagrams ──────────────────────────────
+  useEffect(() => {
+    const supabase = createClient();
+
+    function playChime() {
+      try {
+        const ctx = new AudioContext();
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
+        [880, 1108, 1320].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          osc.start(ctx.currentTime + i * 0.07);
+          osc.stop(ctx.currentTime + 1.2);
+        });
+      } catch {}
+    }
+
+    const channel = supabase
+      .channel("ai-diagrams")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "diagrams" }, (payload: { new: Diagram }) => {
+        const d = payload.new as Diagram;
+        setDiagrams(prev => prev.some(x => x.id === d.id) ? prev : [d, ...prev]);
+        if (d.is_favorite) setFavs(prev => new Set([...prev, d.id]));
+        playChime();
+        showToast(`✦ "${d.title}" created by AI`, { color: "#1c1e21" });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // ── Global paste — save new record + open in editor ───────────────────────
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
