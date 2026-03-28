@@ -404,15 +404,15 @@ function AIThinkingOverlay() {
       const pulse = 0.7 + 0.3 * Math.sin(t * 0.04);
       const r = 88 * pulse;
       const grd = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r * 2.8);
-      grd.addColorStop(0, `rgba(110,130,255,${0.28 * pulse})`);
-      grd.addColorStop(0.5, `rgba(80,60,200,${0.14 * pulse})`);
+      grd.addColorStop(0, `rgba(220,220,220,${0.18 * pulse})`);
+      grd.addColorStop(0.5, `rgba(160,160,160,${0.08 * pulse})`);
       grd.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = grd;
       ctx.beginPath(); ctx.arc(W / 2, H / 2, r * 2.8, 0, Math.PI * 2); ctx.fill();
 
       const core = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r);
-      core.addColorStop(0, `rgba(200,210,255,${0.6 * pulse})`);
-      core.addColorStop(1, "rgba(80,80,255,0)");
+      core.addColorStop(0, `rgba(255,255,255,${0.55 * pulse})`);
+      core.addColorStop(1, "rgba(180,180,180,0)");
       ctx.fillStyle = core;
       ctx.beginPath(); ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2); ctx.fill();
 
