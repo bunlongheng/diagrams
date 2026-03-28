@@ -817,6 +817,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
         showToast(`✦ "${d.title}" created by AI`, { color: "#1c1e21" });
         setNewCardId(d.id);
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.3 }, startVelocity: 45, ticks: 200 });
+        setTimeout(() => { window.location.href = `/?id=${d.id}`; }, 1200);
         setTimeout(() => setNewCardId(null), 2600);
       })
       .subscribe();
