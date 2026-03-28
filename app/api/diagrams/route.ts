@@ -28,6 +28,7 @@ async function resolveUser(req: NextRequest) {
 
 // POST /api/diagrams — save a diagram (requires auth)
 export async function POST(req: NextRequest) {
+  const isApiCall = !!req.headers.get("authorization")?.trim();
   const user = await resolveUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const { data: diagram, error } = await admin
     .from("diagrams")
-    .insert({ user_id: user.id, title: title || "Untitled", slug, code, diagram_type: diagramType, ...(tags?.length ? { tags } : {}) })
+    .insert({ user_id: user.id, title: title || "Untitled", slug, code, diagram_type: diagramType, tags: isApiCall ? [...new Set([...(tags ?? []), "API"])] : (tags ?? []) })
     .select()
     .single();
 
