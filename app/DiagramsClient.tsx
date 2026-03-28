@@ -552,19 +552,20 @@ function TagModal({ diagram, onSave, onClose, tagColorMap, allKnownTags }: { dia
   const allOptions = [...new Set([...PRESET_TAGS, ...allKnownTags])].sort();
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(6px)" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(6px)" }}
+      onKeyDown={e => { if (e.key === "Enter" && !input.trim()) { e.stopPropagation(); onSave(tags); onClose(); } }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "28px 32px 24px", width: 620, maxWidth: "90vw", boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1c1e21", margin: "0 0 4px" }}>Tags</h3>
         <p style={{ fontSize: 12, color: "#8a8d91", margin: "0 0 18px" }}>{diagram.title}</p>
 
         {/* All tag options */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 16 }}>
           {allOptions.map(t => {
             const active = tags.includes(t);
             const s = tagColorMap.get(t) ?? TAG_PALETTE[allOptions.indexOf(t) % TAG_PALETTE.length];
             return (
               <button key={t} onClick={() => active ? remove(t) : add(t)}
-                style={{ padding: "6px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: `2px solid ${s.border}`, background: active ? s.bg : "#fff", color: s.text, opacity: active ? 1 : 0.55, transition: "opacity 0.12s, background 0.12s", fontFamily: "inherit" }}>
+                style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.bg : "#fff", color: s.text, opacity: active ? 1 : 0.55, transition: "opacity 0.12s, background 0.12s", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                 {t}
               </button>
             );
@@ -574,7 +575,7 @@ function TagModal({ diagram, onSave, onClose, tagColorMap, allKnownTags }: { dia
         {/* Custom tag input */}
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") add(input); if (e.key === "Escape") onClose(); }}
+            onKeyDown={e => { e.stopPropagation(); if (e.key === "Enter") { if (input.trim()) add(input); else { onSave(tags); onClose(); } } if (e.key === "Escape") onClose(); }}
             placeholder="Custom tag…"
             style={{ flex: 1, padding: "8px 12px", fontSize: 13, border: "1.5px solid #e4e6e8", borderRadius: 9, outline: "none", fontFamily: "inherit", color: "#1c1e21", background: "#f8f9fa" }} />
           <button onClick={() => add(input)} style={{ padding: "8px 14px", background: "#1c1e21", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Add</button>
