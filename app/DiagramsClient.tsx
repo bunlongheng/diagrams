@@ -590,7 +590,7 @@ function TagModal({ diagram, onSave, onClose, tagColorMap, allKnownTags }: { dia
             const s = tagColorMap.get(t) ?? TAG_PALETTE[allOptions.indexOf(t) % TAG_PALETTE.length];
             return (
               <button key={t} onClick={() => active ? remove(t) : add(t)}
-                style={{ padding: "3px 10px 3px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.text : "#fff", color: active ? "#fff" : s.text, opacity: active ? 1 : 0.55, transition: "all 0.12s", fontFamily: "inherit", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                style={{ padding: "3px 10px 3px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.border : "#fff", color: s.text, opacity: active ? 1 : 0.55, transition: "all 0.12s", fontFamily: "inherit", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <TagIcon tag={t} size={10} />
                 {t}
               </button>
@@ -1033,13 +1033,13 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
           </button>
           {allTags.map(t => { const s = tagColorMap.get(t)!; const active = activeTag === t; const count = tagCounts.get(t) ?? 0; return (
             <button key={t} onClick={() => setActiveTag(active ? null : t)}
-              style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.text : "#fff", color: active ? "#fff" : s.text, flexShrink: 0, transition: "all 0.15s", opacity: active ? 1 : 0.65, display: "flex", alignItems: "center", gap: 4 }}>
+              style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${s.border}`, background: active ? s.border : "#fff", color: s.text, flexShrink: 0, transition: "all 0.15s", opacity: active ? 1 : 0.65, display: "flex", alignItems: "center", gap: 4 }}>
               <TagIcon tag={t} size={10} />
               {t} <span style={{ background: active ? "rgba(255,255,255,0.25)" : `${s.text}22`, borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{count}</span>
             </button>
           ); })}
           <button onClick={() => setActiveTag(activeTag === "__no_tag__" ? null : "__no_tag__")}
-            style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${activeTag === "__no_tag__" ? "#8a8d91" : "#e4e6e8"}`, background: activeTag === "__no_tag__" ? "#65676b" : "#fff", color: activeTag === "__no_tag__" ? "#fff" : "#65676b", flexShrink: 0, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 4 }}>
+            style={{ padding: "3px 10px 3px 7px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid #d1d5db`, background: activeTag === "__no_tag__" ? "#d1d5db" : "#fff", color: "#65676b", flexShrink: 0, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 4 }}>
             <Tag size={10} strokeWidth={2.5} style={{ flexShrink: 0 }} />
             No Tag <span style={{ background: activeTag === "__no_tag__" ? "rgba(255,255,255,0.25)" : "#e4e6e8", borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{diagrams.filter(d => (d.tags ?? []).length === 0).length}</span>
           </button>
