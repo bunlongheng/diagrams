@@ -389,15 +389,14 @@ function AIThinkingOverlay() {
       isWord: Math.random() < 0.35,
     }));
 
-    // Center stacked big words — huge / large / medium layers
-    const CENTER_SIZES = [110, 72, 48, 32, 22];
-    const centerWords = CENTER_SIZES.map(size => ({
-      text: pickToken(),
-      size,
-      alpha: 0.12 + (size / 110) * 0.22,
-      tickNext: Math.floor(Math.random() * 120) + 60,
-      offsetY: (CENTER_SIZES.indexOf(size) - 2) * size * 0.55,
-    }));
+    // One huge center word, fades in/out and cycles
+    const AI_WORDS = ["context","generate","sequence","diagram","tokens","model","prompt","neural","embed","parse","encode","chain","batch","infer","weight","layer","tensor","epoch","dropout","cluster","feature","semantic","attention","gradient","dataset","output","latent","vector","pipeline","deploy"];
+    let centerWord = AI_WORDS[Math.floor(Math.random() * AI_WORDS.length)];
+    let centerAlpha = 0;
+    let centerFading = true; // true = fading in
+    let centerTimer = 0;
+    const FADE_SPEED = 0.022;
+    const HOLD_FRAMES = 90;
 
     let t = 0;
     let phraseIdx = 0;
@@ -406,26 +405,30 @@ function AIThinkingOverlay() {
     const draw = () => {
       t++;
       phraseTimer++;
+      centerTimer++;
       if (phraseTimer > 80) { phraseTimer = 0; phraseIdx = (phraseIdx + 1) % LOADING_PHRASES.length; }
 
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = "rgba(8,8,16,0.94)";
       ctx.fillRect(0, 0, W, H);
 
-      // ── Center stacked white text (replacing orb) ──
+      // ── One huge white center word ──
+      if (centerFading) {
+        centerAlpha = Math.min(1, centerAlpha + FADE_SPEED);
+        if (centerAlpha >= 1) { centerFading = false; centerTimer = 0; }
+      } else if (centerTimer > HOLD_FRAMES) {
+        centerAlpha = Math.max(0, centerAlpha - FADE_SPEED);
+        if (centerAlpha <= 0) {
+          centerWord = AI_WORDS[Math.floor(Math.random() * AI_WORDS.length)];
+          centerFading = true; centerTimer = 0;
+        }
+      }
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      for (const cw of centerWords) {
-        if (--cw.tickNext <= 0) {
-          cw.text = pickToken();
-          cw.tickNext = Math.floor(Math.random() * 140) + 60;
-        }
-        const pulse = 0.85 + 0.15 * Math.sin(t * 0.03 + cw.size);
-        ctx.globalAlpha = cw.alpha * pulse;
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `700 ${cw.size}px monospace`;
-        ctx.fillText(cw.text, W / 2, H / 2 + cw.offsetY);
-      }
+      ctx.globalAlpha = centerAlpha;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `700 ${Math.min(W * 0.13, 120)}px system-ui,sans-serif`;
+      ctx.fillText(centerWord, W / 2, H / 2);
       ctx.globalAlpha = 1;
       ctx.textBaseline = "alphabetic";
 
