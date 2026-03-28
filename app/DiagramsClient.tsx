@@ -1020,7 +1020,8 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
       `}</style>
 
       {/* ── Header ── */}
-      <header className="dc-header" style={{ background: "#ffffff", borderBottom: "1px solid #e4e6e8", padding: "0 32px", height: 56, display: "flex", alignItems: "center", gap: 20, position: "sticky", top: 0, zIndex: 10 }}>
+      <header className="dc-header" style={{ background: "#ffffff", borderBottom: "1px solid #e4e6e8", height: 56, position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ maxWidth: 1600, margin: "0 auto", padding: "0 32px", height: "100%", display: "flex", alignItems: "center", gap: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <svg width={28} height={28} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 8 }}>
             <defs><linearGradient id="hbg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#0f051e"/><stop offset="55%" stopColor="#2e0f6b"/><stop offset="100%" stopColor="#0c2340"/></linearGradient></defs>
@@ -1079,11 +1080,12 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
             </div>
           )}
         </div>
-      </header>
+      </div></header>
 
       {/* ── Tag filter bar ── */}
       {allTags.length > 0 && (
-        <div style={{ background: "#ffffff", borderBottom: "1px solid #e4e6e8", padding: "0 32px", height: 40, display: "flex", alignItems: "center", gap: 6, overflowX: "auto" }}>
+        <div style={{ background: "#ffffff", borderBottom: "1px solid #e4e6e8", height: 40 }}>
+        <div style={{ maxWidth: 1600, margin: "0 auto", padding: "0 32px", height: "100%", display: "flex", alignItems: "center", gap: 6, overflowX: "auto" }}>
           <button onClick={() => setActiveTag(null)}
             style={{ padding: "3px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${!activeTag ? "#1c1e21" : "#e4e6e8"}`, background: !activeTag ? "#1c1e21" : "#f4f5f7", color: !activeTag ? "#fff" : "#65676b", flexShrink: 0, transition: "all 0.12s", display: "flex", alignItems: "center", gap: 5 }}>
             All <span style={{ background: !activeTag ? "rgba(255,255,255,0.25)" : "#e4e6e8", borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{diagrams.length}</span>
@@ -1101,7 +1103,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
             <Tag size={10} strokeWidth={2.5} style={{ flexShrink: 0 }} />
             No Tag <span style={{ background: activeTag === "__no_tag__" ? "rgba(255,255,255,0.25)" : "#e4e6e8", borderRadius: 20, padding: "0 5px", fontSize: 10 }}>{diagrams.filter(d => (d.tags ?? []).length === 0).length}</span>
           </button>
-        </div>
+        </div></div>
       )}
 
       {/* ── Content ── */}
