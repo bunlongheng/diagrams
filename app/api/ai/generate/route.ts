@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   // ── Call Claude ───────────────────────────────────────────────────────────
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  let title: string, code: string;
+  let title: string, code: string, tokensIn = 0, tokensOut = 0;
   try {
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
     title = parsed.title;
     code  = parsed.code;
     if (!title || !code) throw new Error("Missing title or code");
+    tokensIn = msg.usage.input_tokens;
+    tokensOut = msg.usage.output_tokens;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Claude generation failed";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -86,6 +88,8 @@ export async function POST(req: NextRequest) {
       diagram_type: "sequence",
       tags: ["AI"],
       settings: { opts: { boxOverlay: "gloss", iconMode: "icons" } },
+      tokens_in: tokensIn,
+      tokens_out: tokensOut,
     })
     .select()
     .single();
