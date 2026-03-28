@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { showToast } from "@/app/CuteToast";
 import type { User } from "@supabase/supabase-js";
+import confetti from "canvas-confetti";
 
 type Diagram = {
   id: string; title: string; slug: string;
@@ -337,6 +338,152 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   );
 }
 
+// ── AI Thinking animation ─────────────────────────────────────────────────────
+const AI_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*<>/\\|{}[]";
+function AIThinkingOverlay() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const W = canvas.width = window.innerWidth;
+    const H = canvas.height = window.innerHeight;
+
+    const particles = Array.from({ length: 120 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.5) * 0.6,
+      char: AI_CHARS[Math.floor(Math.random() * AI_CHARS.length)],
+      alpha: Math.random() * 0.5 + 0.1,
+      size: Math.floor(Math.random() * 10) + 9,
+      tickNext: Math.floor(Math.random() * 40),
+    }));
+
+    let t = 0;
+    const draw = () => {
+      t++;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(10,10,18,0.88)";
+      ctx.fillRect(0, 0, W, H);
+
+      // breathing glow orb
+      const pulse = 0.7 + 0.3 * Math.sin(t * 0.04);
+      const r = 90 * pulse;
+      const grd = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r * 2.5);
+      grd.addColorStop(0, `rgba(100,120,255,${0.22 * pulse})`);
+      grd.addColorStop(0.5, `rgba(80,60,200,${0.12 * pulse})`);
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2, r * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // inner bright core
+      const core = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, r);
+      core.addColorStop(0, `rgba(180,190,255,${0.55 * pulse})`);
+      core.addColorStop(1, "rgba(80,80,255,0)");
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // floating chars
+      for (const p of particles) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        if (--p.tickNext <= 0) { p.char = AI_CHARS[Math.floor(Math.random() * AI_CHARS.length)]; p.tickNext = Math.floor(Math.random() * 60) + 20; }
+        const dist = Math.hypot(p.x - W / 2, p.y - H / 2);
+        const glow = Math.max(0, 1 - dist / (W * 0.4));
+        ctx.globalAlpha = p.alpha + glow * 0.4;
+        ctx.fillStyle = `hsl(${220 + glow * 40},80%,${70 + glow * 20}%)`;
+        ctx.font = `${p.size}px monospace`;
+        ctx.fillText(p.char, p.x, p.y);
+      }
+      ctx.globalAlpha = 1;
+
+      // center label
+      const label = "Generating diagram" + ".".repeat(1 + (Math.floor(t / 18) % 3));
+      ctx.font = "600 15px system-ui,sans-serif";
+      ctx.fillStyle = `rgba(200,210,255,${0.8 + 0.2 * pulse})`;
+      ctx.textAlign = "center";
+      ctx.fillText(label, W / 2, H / 2 + r * 1.6);
+
+      frameRef.current = requestAnimationFrame(draw);
+    };
+    frameRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frameRef.current);
+  }, []);
+
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 2000, display: "block" }} />;
+}
+
+// ── AI Prompt modal ────────────────────────────────────────────────────────────
+function AIPromptModal({ onClose, onCreated }: { onClose: () => void; onCreated: (d: { id: string; title: string }) => void }) {
+  const [prompt, setPrompt] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const submit = async () => {
+    if (!prompt.trim() || thinking) return;
+    setThinking(true);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_AI_SECRET ?? ""}`,
+        },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Generation failed", { color: "#ef4444" }); setThinking(false); return; }
+      onCreated(data);
+    } catch {
+      showToast("Network error", { color: "#ef4444" });
+      setThinking(false);
+    }
+  };
+
+  if (thinking) return <AIThinkingOverlay />;
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(8px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#ffffff", borderRadius: 20, padding: "32px 32px 28px", width: 520, boxShadow: "0 32px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#1c1e21", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1c1e21", margin: 0 }}>Generate with AI</h3>
+            <p style={{ fontSize: 12, color: "#8a8d91", margin: 0 }}>Describe your diagram and Claude will build it</p>
+          </div>
+        </div>
+        <textarea
+          ref={inputRef}
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); if (e.key === "Escape") onClose(); }}
+          placeholder="e.g. OAuth 2.0 login flow between user, frontend, and auth server…"
+          rows={4}
+          style={{ width: "100%", padding: "12px 14px", fontSize: 14, border: "1.5px solid #e4e6e8", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "none", color: "#1c1e21", background: "#f8f9fa", boxSizing: "border-box", lineHeight: 1.6 }}
+        />
+        <p style={{ fontSize: 11, color: "#bcc0c4", margin: "8px 0 20px" }}>⌘ + Enter to generate</p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{ padding: "10px 20px", border: "1px solid #e4e6e8", borderRadius: 10, background: "#f4f5f7", cursor: "pointer", fontSize: 13, fontFamily: "inherit", color: "#65676b" }}>Cancel</button>
+          <button onClick={submit} disabled={!prompt.trim()} style={{ padding: "10px 24px", background: prompt.trim() ? "#1c1e21" : "#e4e6e8", color: prompt.trim() ? "#fff" : "#8a8d91", border: "none", borderRadius: 10, cursor: prompt.trim() ? "pointer" : "default", fontSize: 13, fontWeight: 600, fontFamily: "inherit", transition: "background 0.15s" }}>
+            Generate ✦
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Rename modal ──────────────────────────────────────────────────────────────
 function RenameModal({ title, onSave, onClose }: { title: string; onSave: (t: string) => void; onClose: () => void }) {
   const [val, setVal] = useState(title);
@@ -447,7 +594,20 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   const [renamingDiagram, setRenamingDiagram] = useState<Diagram | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showDocs, setShowDocs] = useState(false);
+  const [showAIPrompt, setShowAIPrompt] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleAICreated = useCallback((d: { id: string; title: string }) => {
+    setShowAIPrompt(false);
+    // confetti burst
+    const end = Date.now() + 1500;
+    const frame = () => {
+      confetti({ particleCount: 6, angle: 270, spread: 120, startVelocity: 14, gravity: 0.9, drift: (Math.random() - 0.5) * 1.2, ticks: 180, origin: { x: Math.random(), y: 0 }, colors: ["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6"] });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    showToast(`✦ "${d.title}" ready!`, { color: "#1c1e21" });
+  }, []);
   const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? "";
 
   useEffect(() => {
@@ -729,9 +889,13 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
       </main>
 
       {/* ── FAB ── */}
-      <a href="/?new" title="New diagram"
-        style={{ position: "fixed", bottom: 32, right: 32, width: 52, height: 52, borderRadius: "50%", background: "#1c1e21", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", textDecoration: "none", fontSize: 26, color: "#fff" }}
-      >+</a>
+      <button onClick={() => setShowAIPrompt(true)} title="Generate with AI"
+        style={{ position: "fixed", bottom: 32, right: 32, width: 52, height: 52, borderRadius: "50%", background: "#1c1e21", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", border: "none", cursor: "pointer", fontSize: 24, color: "#fff", transition: "transform 0.15s, box-shadow 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 6px 28px rgba(0,0,0,0.4)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)"; }}
+      >✦</button>
+
+      {showAIPrompt && <AIPromptModal onClose={() => setShowAIPrompt(false)} onCreated={handleAICreated} />}
 
       {renamingDiagram && (
         <RenameModal
