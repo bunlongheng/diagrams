@@ -658,10 +658,10 @@ function RenameModal({ title, onSave, onClose }: { title: string; onSave: (t: st
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShare, onRename, onTag, copied, deleting, tagColorMap }: {
+function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShare, onRename, onTag, copied, deleting, tagColorMap, isNew }: {
   d: Diagram; isFav: boolean; isShared: boolean;
   onOpen: () => void; onToggleFav: () => void; onDelete: () => void; onShare: () => void; onRename: () => void; onTag: () => void;
-  copied: boolean; deleting: boolean; tagColorMap: Map<string, typeof TAG_PALETTE[0]>;
+  copied: boolean; deleting: boolean; tagColorMap: Map<string, typeof TAG_PALETTE[0]>; isNew: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const tags = d.tags ?? [];
@@ -671,16 +671,18 @@ function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShar
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onOpen}
+      className={isNew ? "dc-new-card" : undefined}
       style={{
         background: "#ffffff",
         borderRadius: 14,
         overflow: "hidden",
         cursor: "pointer",
         transition: "box-shadow 0.15s, transform 0.15s",
-        border: hovered ? "2px solid #1c1e21" : "2px solid transparent",
-        boxShadow: hovered ? "0 8px 28px rgba(0,0,0,0.18), 0 0 0 3px rgba(28,30,33,0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
+        border: isNew ? "2px solid #6366f1" : hovered ? "2px solid #1c1e21" : "2px solid transparent",
+        boxShadow: isNew ? "0 0 0 3px rgba(99,102,241,0.25), 0 8px 28px rgba(99,102,241,0.15)" : hovered ? "0 8px 28px rgba(0,0,0,0.18), 0 0 0 3px rgba(28,30,33,0.08)" : "0 1px 4px rgba(0,0,0,0.05)",
         transform: hovered ? "translateY(-2px)" : "translateY(0)",
         position: "relative",
+        animation: isNew ? "dc-blink 0.4s ease-in-out 2" : undefined,
       }}
     >
       {/* Header */}
@@ -752,6 +754,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   const [shared, setShared] = useState<Set<string>>(loadShared);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [newCardId, setNewCardId] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [search, setSearch] = useState("");
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
@@ -812,6 +815,9 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
         if (d.is_favorite) setFavs(prev => new Set([...prev, d.id]));
         playChime();
         showToast(`✦ "${d.title}" created by AI`, { color: "#1c1e21" });
+        setNewCardId(d.id);
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.3 }, startVelocity: 45, ticks: 200 });
+        setTimeout(() => setNewCardId(null), 2600);
       })
       .subscribe();
 
@@ -978,12 +984,19 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     copied: copied === d.id,
     deleting: deleting === d.id,
     tagColorMap,
+    isNew: newCardId === d.id,
   });
 
   return (
     <div style={{ minHeight: "100vh", background: "#f4f5f7", fontFamily: "Inter, system-ui, sans-serif" }}>
       <CuteToast />
       <style>{`
+        @keyframes dc-blink {
+          0%   { opacity: 1; }
+          40%  { opacity: 0.25; }
+          100% { opacity: 1; }
+        }
+        .dc-new-card { animation: dc-blink 0.45s ease-in-out 2; }
         @media (max-width: 640px) {
           .dc-header { padding: 0 16px !important; }
           .dc-search-wrap { flex: 1 !important; width: auto !important; min-width: 0 !important; }
