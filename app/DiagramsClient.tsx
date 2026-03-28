@@ -434,10 +434,7 @@ function AIPromptModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     try {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_AI_SECRET ?? ""}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: prompt.trim() }),
       });
       const data = await res.json();

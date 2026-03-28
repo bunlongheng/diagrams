@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createAdminClient } from "@/lib/supabase/server";
-
-const AI_SECRET = process.env.AI_API_SECRET;
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 function toSlug(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled";
@@ -26,10 +24,10 @@ Rules for the code field:
 - Escape all newlines as \\n in the JSON string`;
 
 export async function POST(req: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  if (!AI_SECRET) return NextResponse.json({ error: "AI_API_SECRET not configured" }, { status: 500 });
-  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
-  if (bearer !== AI_SECRET) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // ── Auth: session cookie only (UI-facing route) ───────────────────────────
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: { prompt?: string };
   try { body = await req.json(); } catch {
