@@ -516,6 +516,7 @@ function AIPromptModal({ onClose, onCreated }: { onClose: () => void; onCreated:
 const TAG_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   ai:       { bg: "#ede9fe", text: "#6d28d9", border: "#c4b5fd" },
   api:      { bg: "#fef3c7", text: "#b45309", border: "#fcd34d" },
+  pasted:   { bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc" },
   work:     { bg: "#dbeafe", text: "#1d4ed8", border: "#93c5fd" },
   personal: { bg: "#dcfce7", text: "#15803d", border: "#86efac" },
   research: { bg: "#fef9c3", text: "#a16207", border: "#fde047" },
@@ -791,7 +792,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
         const res = await fetch("/api/diagrams", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, code: pasted, diagramType: dtype }),
+          body: JSON.stringify({ title, code: pasted, diagramType: dtype, tags: ["Pasted"] }),
         });
         if (res.ok) {
           const data = await res.json();
