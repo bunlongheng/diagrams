@@ -538,8 +538,8 @@ function tagStyle(tag: string, colorMap?: Map<string, typeof TAG_PALETTE[0]>) {
 }
 
 // ── Tag modal ─────────────────────────────────────────────────────────────────
-const PRESET_TAGS = ["AI", "Work", "Personal", "Research"];
-function TagModal({ diagram, onSave, onClose, tagColorMap }: { diagram: Diagram; onSave: (tags: string[]) => void; onClose: () => void; tagColorMap: Map<string, typeof TAG_PALETTE[0]> }) {
+const PRESET_TAGS = ["AI", "API", "Work", "Personal", "Research", "Pasted"];
+function TagModal({ diagram, onSave, onClose, tagColorMap, allKnownTags }: { diagram: Diagram; onSave: (tags: string[]) => void; onClose: () => void; tagColorMap: Map<string, typeof TAG_PALETTE[0]>; allKnownTags: string[] }) {
   const [tags, setTags] = useState<string[]>(diagram.tags ?? []);
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -548,20 +548,23 @@ function TagModal({ diagram, onSave, onClose, tagColorMap }: { diagram: Diagram;
   const add = (t: string) => { const v = t.trim(); if (!v || tags.includes(v)) return; setTags(p => [...p, v]); setInput(""); };
   const remove = (t: string) => setTags(p => p.filter(x => x !== t));
 
+  // All selectable options: presets + any existing tags in the system
+  const allOptions = [...new Set([...PRESET_TAGS, ...allKnownTags])].sort();
+
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(6px)" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "28px 28px 24px", width: 420, boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "28px 32px 24px", width: 620, maxWidth: "90vw", boxShadow: "0 24px 64px rgba(0,0,0,0.12)" }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1c1e21", margin: "0 0 4px" }}>Tags</h3>
         <p style={{ fontSize: 12, color: "#8a8d91", margin: "0 0 18px" }}>{diagram.title}</p>
 
-        {/* Preset pills */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-          {PRESET_TAGS.map(t => {
+        {/* All tag options */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+          {allOptions.map(t => {
             const active = tags.includes(t);
-            const s = tagColorMap.get(t) ?? TAG_PALETTE[0];
+            const s = tagColorMap.get(t) ?? TAG_PALETTE[allOptions.indexOf(t) % TAG_PALETTE.length];
             return (
               <button key={t} onClick={() => active ? remove(t) : add(t)}
-                style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${active ? s.border : "#e4e6e8"}`, background: active ? s.bg : "#f4f5f7", color: active ? s.text : "#65676b", transition: "all 0.12s" }}>
+                style={{ padding: "6px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: `2px solid ${s.border}`, background: active ? s.bg : "#fff", color: s.text, opacity: active ? 1 : 0.55, transition: "opacity 0.12s, background 0.12s", fontFamily: "inherit" }}>
                 {t}
               </button>
             );
@@ -577,7 +580,7 @@ function TagModal({ diagram, onSave, onClose, tagColorMap }: { diagram: Diagram;
           <button onClick={() => add(input)} style={{ padding: "8px 14px", background: "#1c1e21", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Add</button>
         </div>
 
-        {/* Current tags */}
+        {/* Selected tags with remove */}
         {tags.length > 0 && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
             {tags.map(t => { const s = tagColorMap.get(t) ?? TAG_PALETTE[0]; return (
@@ -1055,7 +1058,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
       >✦</button>
 
       {showAIPrompt && <AIPromptModal onClose={() => setShowAIPrompt(false)} onCreated={handleAICreated} />}
-      {taggingDiagram && <TagModal diagram={taggingDiagram} onSave={tags => saveTags(taggingDiagram.id, tags)} onClose={() => setTaggingDiagram(null)} tagColorMap={tagColorMap} />}
+      {taggingDiagram && <TagModal diagram={taggingDiagram} onSave={tags => saveTags(taggingDiagram.id, tags)} onClose={() => setTaggingDiagram(null)} tagColorMap={tagColorMap} allKnownTags={allTags} />}
 
       {renamingDiagram && (
         <RenameModal
