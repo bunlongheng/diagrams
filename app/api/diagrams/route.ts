@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { title, code, diagramType } = await req.json();
+  const { title, code, diagramType, tags } = await req.json();
   if (!title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
   if (!code?.trim()) return NextResponse.json({ error: "code is required" }, { status: 400 });
   const admin = createAdminClient();
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const { data: diagram, error } = await admin
     .from("diagrams")
-    .insert({ user_id: user.id, title: title || "Untitled", slug, code, diagram_type: diagramType })
+    .insert({ user_id: user.id, title: title || "Untitled", slug, code, diagram_type: diagramType, ...(tags?.length ? { tags } : {}) })
     .select()
     .single();
 
