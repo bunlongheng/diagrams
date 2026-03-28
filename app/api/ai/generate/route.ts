@@ -82,7 +82,6 @@ export async function POST(req: NextRequest) {
       slug,
       code: code.trim(),
       diagram_type: "sequence",
-      is_favorite: true,
       settings: { opts: { boxOverlay: "gloss", iconMode: "icons" } },
     })
     .select()

@@ -629,7 +629,6 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     setShowAIPrompt(false);
     // Add diagram to state first, then confetti after render
     setDiagrams(prev => prev.some(x => x.id === d.id) ? prev : [d, ...prev]);
-    setFavs(prev => new Set([...prev, d.id]));
     showToast(`✦ "${d.title}" ready!`, { color: "#1c1e21" });
     // Wait for the card to paint before confetti
     setTimeout(() => {
