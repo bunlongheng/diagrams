@@ -892,8 +892,9 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
 
   const filtered = diagrams.filter(d => {
     if (search.trim() && !d.title.toLowerCase().includes(search.toLowerCase()) && !d.diagram_type.toLowerCase().includes(search.toLowerCase())) return false;
-    if (activeTag && !(d.tags ?? []).includes(activeTag)) return false;
-    return true;
+    if (activeTag) return (d.tags ?? []).includes(activeTag);
+    // "All" view: hide tagged diagrams so they only appear under their tag
+    return (d.tags ?? []).length === 0;
   });
 
   const byUpdated = (a: Diagram, b: Diagram) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at);
