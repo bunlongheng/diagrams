@@ -512,17 +512,27 @@ function AIPromptModal({ onClose, onCreated }: { onClose: () => void; onCreated:
   );
 }
 
-// ── Tag colors ────────────────────────────────────────────────────────────────
-const TAG_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  ai:       { bg: "#ede9fe", text: "#6d28d9", border: "#c4b5fd" },
-  api:      { bg: "#fef3c7", text: "#b45309", border: "#fcd34d" },
-  pasted:   { bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc" },
-  work:     { bg: "#dbeafe", text: "#1d4ed8", border: "#93c5fd" },
-  personal: { bg: "#dcfce7", text: "#15803d", border: "#86efac" },
-  research: { bg: "#fef9c3", text: "#a16207", border: "#fde047" },
-  default:  { bg: "#f0f1f3", text: "#65676b", border: "#e4e6e8" },
-};
-function tagStyle(tag: string) { return TAG_COLORS[tag.toLowerCase()] ?? TAG_COLORS.default; }
+// ── Tag colors — 12 unique palettes, assigned by tag name hash ────────────────
+const TAG_PALETTE = [
+  { bg: "#fef2f2", text: "#b91c1c", border: "#fca5a5" }, // red
+  { bg: "#fff7ed", text: "#c2410c", border: "#fdba74" }, // orange
+  { bg: "#fefce8", text: "#a16207", border: "#fde047" }, // yellow
+  { bg: "#f0fdf4", text: "#15803d", border: "#86efac" }, // green
+  { bg: "#ecfdf5", text: "#047857", border: "#6ee7b7" }, // emerald
+  { bg: "#f0fdfa", text: "#0f766e", border: "#5eead4" }, // teal
+  { bg: "#eff6ff", text: "#1d4ed8", border: "#93c5fd" }, // blue
+  { bg: "#eef2ff", text: "#4338ca", border: "#a5b4fc" }, // indigo
+  { bg: "#faf5ff", text: "#7e22ce", border: "#d8b4fe" }, // violet
+  { bg: "#fdf4ff", text: "#a21caf", border: "#f0abfc" }, // fuchsia
+  { bg: "#fff1f2", text: "#be123c", border: "#fda4af" }, // rose
+  { bg: "#f0f9ff", text: "#0369a1", border: "#7dd3fc" }, // sky
+];
+function tagHash(tag: string): number {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  return h % TAG_PALETTE.length;
+}
+function tagStyle(tag: string) { return TAG_PALETTE[tagHash(tag.toLowerCase())]; }
 
 // ── Tag modal ─────────────────────────────────────────────────────────────────
 const PRESET_TAGS = ["AI", "Work", "Personal", "Research"];
