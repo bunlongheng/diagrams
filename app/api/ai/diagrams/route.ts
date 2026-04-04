@@ -48,21 +48,65 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({
       error: "Invalid JSON body",
-      fix: "Send Content-Type: application/json with a valid JSON body",
-      example: { title: "My Diagram", code: "sequenceDiagram\n  A->>B: hello", diagramType: "sequence" },
+      instruction: "Send a valid JSON body with Content-Type: application/json. The body MUST include \"title\" and \"code\" fields.",
+      required_fields: {
+        title: "string — A descriptive name for the diagram (e.g. \"User Authentication Flow\")",
+        code: "string — Valid Mermaid syntax for the diagram",
+      },
+      optional_fields: {
+        diagramType: "string — One of: sequence, flowchart, classDiagram, erDiagram, gantt, pie, mindmap, timeline, etc. Defaults to \"sequence\"",
+      },
+      sample_request: {
+        body: {
+          title: "User Authentication Flow",
+          diagramType: "sequence",
+          code: "---\ntitle: User Authentication Flow\n---\nsequenceDiagram\n  participant U as 🧑 User\n  participant S as ⚙️ Server\n  U->>S: Login Request\n  S-->>U: JWT Token",
+        },
+      },
     }, { status: 400 });
   }
 
   const { title, code, diagramType = "sequence" } = body;
+
   if (!title?.trim()) return NextResponse.json({
-    error: "title is required",
-    fix: "Add a non-empty \"title\" field to your JSON body",
-    example: { title: "My Diagram", code: "sequenceDiagram\n  A->>B: hello", diagramType: "sequence" },
+    error: "Missing required field: title",
+    instruction: "You MUST include a \"title\" field in your JSON body. The title describes what the diagram is about.",
+    required_fields: {
+      title: "string — A descriptive name for the diagram (e.g. \"User Authentication Flow\")",
+      code: "string — Valid Mermaid syntax for the diagram",
+    },
+    optional_fields: {
+      diagramType: "string — One of: sequence, flowchart, classDiagram, erDiagram, gantt, pie, mindmap, timeline, etc. Defaults to \"sequence\"",
+    },
+    sample_request: {
+      method: "POST",
+      url: "/api/ai/diagrams",
+      headers: {
+        "Authorization": "Bearer <YOUR_API_SECRET>",
+        "Content-Type": "application/json",
+      },
+      body: {
+        title: "User Authentication Flow",
+        diagramType: "sequence",
+        code: "---\ntitle: User Authentication Flow\n---\nsequenceDiagram\n  participant U as 🧑 User\n  participant S as ⚙️ Server\n  U->>S: Login Request\n  S-->>U: JWT Token",
+      },
+    },
   }, { status: 400 });
+
   if (!code?.trim()) return NextResponse.json({
-    error: "code is required",
-    fix: "Add a non-empty \"code\" field containing valid mermaid syntax",
-    example: { title: "My Diagram", code: "sequenceDiagram\n  A->>B: hello", diagramType: "sequence" },
+    error: "Missing required field: code",
+    instruction: "You MUST include a \"code\" field containing valid Mermaid diagram syntax.",
+    required_fields: {
+      title: "string — A descriptive name for the diagram",
+      code: "string — Valid Mermaid syntax for the diagram",
+    },
+    sample_request: {
+      body: {
+        title: "User Authentication Flow",
+        diagramType: "sequence",
+        code: "---\ntitle: User Authentication Flow\n---\nsequenceDiagram\n  participant U as 🧑 User\n  participant S as ⚙️ Server\n  U->>S: Login Request\n  S-->>U: JWT Token",
+      },
+    },
   }, { status: 400 });
 
   // ── Resolve owner user_id from ALLOWED_EMAIL ──────────────────────────────
