@@ -5,10 +5,10 @@ let client: ReturnType<typeof createBrowserClient> | null = null;
 
 export const createClient = () => {
   if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return null as unknown as ReturnType<typeof createBrowserClient>;
+    client = createBrowserClient(url, key);
   }
   return client;
 };

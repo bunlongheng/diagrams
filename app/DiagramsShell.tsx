@@ -17,6 +17,7 @@ export default function DiagramsShell() {
 
   useEffect(() => {
     const supabase = createClient();
+    if (!supabase) { setSessionChecked(true); return; }
     const allowed = process.env.NEXT_PUBLIC_ALLOWED_EMAIL;
 
     async function fetchDiagrams(u: User) {

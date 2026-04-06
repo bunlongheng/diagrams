@@ -22,6 +22,7 @@ export default function LoginForm() {
     e.preventDefault();
     setError(""); setLoading(true);
     const supabase = createClient();
+    if (!supabase) { setError("Supabase not configured"); setLoading(false); return; }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }

@@ -425,6 +425,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const bw = pBW[i];
         const x = cx(i) - bw / 2;
         const col = pal[i % pal.length];
+        parts.push(`<g data-pid="${p.id}" style="cursor:pointer">`);
         parts.push(`<rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}" fill="${col}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
         if (o.boxOverlay !== "none") {
             const clipId = `bcp${i}_${Math.round(y)}`;
@@ -484,6 +485,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         } else {
             parts.push(`<text x="${cx(i)}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${BOX_FS}" font-weight="700" fill="${th.labelFill}">${esc(p.label)}</text>`);
         }
+        parts.push(`</g>`);
     };
     ps.forEach((p, i) => renderBox(p, i, TOP_PAD + TITLE_H + TP));
     ms.forEach(msg => {
@@ -1069,6 +1071,7 @@ function DiagramEditor() {
     const [savedDiagramId, setSavedDiagramId] = useState<string | null>(null);
     const [isSharedDiagram, setIsSharedDiagram] = useState(false);
     const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
+    const [nodePopover, setNodePopover] = useState<{ pid: string; x: number; y: number } | null>(null);
 
     const diagramType = useMemo(() => detectDiagramType(deferredCode), [deferredCode]);
     const isSequence = diagramType === "sequence";
@@ -1126,6 +1129,77 @@ function DiagramEditor() {
             });
         }
     }, [code, savedDiagramId, supabaseUser, svgWrapRef]);
+
+    const insertParticipant = useCallback((anchorPid: string, position: "before" | "after") => {
+        setNodePopover(null);
+        const lines = code.split("\n");
+        // Find the line that declares this participant, or first message mentioning it
+        let anchorIdx = lines.findIndex(l => {
+            const m = l.trim().match(/^(?:participant|actor)\s+(\S+)/i);
+            return m && m[1] === anchorPid;
+        });
+        // If no explicit declaration, find first message line mentioning this pid
+        if (anchorIdx < 0) {
+            anchorIdx = lines.findIndex(l => {
+                const m = l.trim().match(/^(\w+)\s*(?:-->>|->>|-->|->)\s*(\w+):/);
+                return m && (m[1] === anchorPid || m[2] === anchorPid);
+            });
+        }
+        if (anchorIdx < 0) anchorIdx = 0;
+
+        // Generate a unique participant id
+        const existing = new Set(diagram.participants.map(p => p.id));
+        let newId = "Node";
+        let n = 1;
+        while (existing.has(newId)) { newId = `Node${++n}`; }
+
+        const insertIdx = position === "after" ? anchorIdx + 1 : anchorIdx;
+        lines.splice(insertIdx, 0, `participant ${newId}`);
+        setCode(lines.join("\n"));
+        setShowCode(true);
+        showToast(`Added ${newId}`, { color: "#22c55e" });
+    }, [code, diagram.participants]);
+
+    const insertMermaidNode = useCallback((anchorText: string, position: "sibling" | "child") => {
+        setNodePopover(null);
+        const lines = code.split("\n");
+        // Find the line containing this node text (strip mermaid shape wrappers)
+        const clean = anchorText.replace(/[()[\]{}]/g, "").trim();
+        let anchorIdx = -1;
+        let anchorIndent = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const stripped = lines[i].replace(/[()[\]{}]/g, "").trim();
+            if (stripped && clean && stripped.includes(clean)) {
+                anchorIdx = i;
+                anchorIndent = lines[i].search(/\S/);
+                break;
+            }
+        }
+        if (anchorIdx < 0) { anchorIdx = lines.length - 1; anchorIndent = 4; }
+
+        // Find end of this node's children block
+        let insertIdx = anchorIdx + 1;
+        if (position === "sibling") {
+            // Skip past any children (lines with deeper indent)
+            while (insertIdx < lines.length && (lines[insertIdx].trim() === "" || lines[insertIdx].search(/\S/) > anchorIndent)) insertIdx++;
+            const indent = " ".repeat(anchorIndent);
+            lines.splice(insertIdx, 0, `${indent}New Node`);
+        } else {
+            const childIndent = " ".repeat(anchorIndent + 2);
+            lines.splice(insertIdx, 0, `${childIndent}New Child`);
+        }
+        setCode(lines.join("\n"));
+        setShowCode(true);
+        showToast(`Added node`, { color: "#22c55e" });
+    }, [code]);
+
+    // Dismiss node popover on outside click
+    useEffect(() => {
+        if (!nodePopover) return;
+        const handler = (e: MouseEvent) => setNodePopover(null);
+        const timer = setTimeout(() => document.addEventListener("mousedown", handler), 0);
+        return () => { clearTimeout(timer); document.removeEventListener("mousedown", handler); };
+    }, [nodePopover]);
 
     const clampPan = useCallback((p: { x: number; y: number }): { x: number; y: number } => {
         const el = canvasRef.current;
@@ -2389,7 +2463,7 @@ function DiagramEditor() {
                     <div ref={canvasRef} className="absolute inset-0 overflow-hidden"
                         style={{ cursor: "default", touchAction: "none" }}
                         onMouseDown={e => {
-                            if ((e.target as HTMLElement).closest("button,#diagram-title")) return;
+                            if ((e.target as HTMLElement).closest("button,#diagram-title,[data-pid],.mindmap-node,.node,[class*='node']")) return;
                             if (opts.autoLayout) upd({ autoLayout: false });
                             isDragging.current = true;
                             setIsPanning(true);
@@ -2410,12 +2484,32 @@ function DiagramEditor() {
                                 }}
                                 onClick={e => {
                                     const el = (e.target as Element).closest("#diagram-title");
-                                    if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); }
+                                    if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); return; }
+                                    // Click on participant box → show add-node popover
+                                    const box = (e.target as Element).closest("[data-pid]") as SVGElement | null;
+                                    if (box) {
+                                        const pid = box.getAttribute("data-pid")!;
+                                        setNodePopover({ pid, x: e.clientX, y: e.clientY });
+                                        return;
+                                    }
+                                    setNodePopover(null);
                                 }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
                         ) : mounted && !isSequence && deferredCode.trim() ? (
-                            <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}>
+                            <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}
+                                onClick={e => {
+                                    // Find clicked mermaid node — look for nearest g with class containing "node" or text element
+                                    const target = e.target as Element;
+                                    const nodeG = target.closest(".mindmap-node, .node, [class*='node']") as SVGElement | null;
+                                    if (!nodeG) return;
+                                    // Extract text from the node
+                                    const textEl = nodeG.querySelector("text, .mindmap-node-label, foreignObject span, foreignObject div");
+                                    const nodeText = (textEl?.textContent ?? "").trim();
+                                    if (!nodeText) return;
+                                    setNodePopover({ pid: nodeText, x: e.clientX, y: e.clientY });
+                                }}
+                            >
                                 <div style={{ background: "#ffffff", borderRadius: 18, boxShadow: "0 4px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)", padding: "48px 56px", minWidth: 480 }}>
                                     <MermaidRenderer code={deferredCode} dark={opts.theme === "dark"} onDims={(w, h) => { setMermaidDims({ w: w + 112, h: h + 96 }); setHasFit(false); }} />
                                 </div>
@@ -2469,6 +2563,36 @@ function DiagramEditor() {
                             }}
                         />
                     )}
+
+                    {/* Node add popover */}
+                    {nodePopover && (() => {
+                        const btnStyle: React.CSSProperties = {
+                            display: "block", width: "100%", padding: "7px 12px", background: "transparent",
+                            border: "none", borderRadius: 6, color: ut.bodyText, fontSize: 12, fontWeight: 600,
+                            cursor: "pointer", textAlign: "left",
+                        };
+                        const hover = (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = ut.activeTab);
+                        const leave = (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = "transparent");
+                        return (
+                            <div
+                                style={{
+                                    position: "fixed", left: nodePopover.x, top: nodePopover.y + 8,
+                                    zIndex: 200, background: ut.panelBg, border: `1px solid ${ut.panelBorder}`,
+                                    borderRadius: 10, padding: 4, boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+                                    minWidth: 160,
+                                }}
+                                onMouseDown={e => e.stopPropagation()}
+                            >
+                                {isSequence ? (<>
+                                    <button onClick={() => insertParticipant(nodePopover.pid, "before")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add node before</button>
+                                    <button onClick={() => insertParticipant(nodePopover.pid, "after")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add node after</button>
+                                </>) : (<>
+                                    <button onClick={() => insertMermaidNode(nodePopover.pid, "sibling")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add sibling</button>
+                                    <button onClick={() => insertMermaidNode(nodePopover.pid, "child")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add child</button>
+                                </>)}
+                            </div>
+                        );
+                    })()}
 
                 </div>
 

@@ -1,9 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import { isLocal } from "@/lib/is-local";
 
 export async function middleware(req: NextRequest) {
-  // Skip auth entirely on local dev
-  if (process.env.LOCAL_DEV === "true") return NextResponse.next();
+  // Skip auth entirely on local/LAN requests
+  if (isLocal(req)) return NextResponse.next();
 
   const res = NextResponse.next({ request: req });
 
