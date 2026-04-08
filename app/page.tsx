@@ -1432,7 +1432,8 @@ function DiagramEditor() {
         if (urlId) {
             setDiagramLoading(true);
             fetch(`/api/diagrams/${urlId}`).then(async r => {
-                if (r.status === 403) { window.location.href = "/"; return; }
+                if (r.status === 403) return; // private diagram — Supabase re-fetch below handles it
+                if (!r.ok) { setDiagramLoading(false); return; }
                 const d = await r.json();
                 if (d?.code) {
                     setCode(d.code);
@@ -1461,13 +1462,13 @@ function DiagramEditor() {
                 if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV !== "true") {
                     setDiagramLoading(true);
                     void supabase.from("diagrams").select("code, settings").eq("id", urlId).single()
-                        .then(({ data: d }) => {
-                            if (d?.code) { setCode(d.code); setHasFit(false); }
-                            if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
-                            if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
+                        .then(({ data: d, error }) => {
+                            if (!error && d?.code) { setCode(d.code); setHasFit(false); }
+                            if (!error && d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
+                            if (!error && d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
                             setDiagramLoading(false);
-                            if (isImported) setTimeout(fireConfetti, 400);
-                        });
+                            if (!error && isImported) setTimeout(fireConfetti, 400);
+                        }).catch(() => setDiagramLoading(false));
                 }
             } else {
                 // Not authenticated — always presenter mode

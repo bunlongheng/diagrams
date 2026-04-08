@@ -670,9 +670,9 @@ function RenameModal({ title, onSave, onClose }: { title: string; onSave: (t: st
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShare, onRename, onTag, copied, deleting, tagColorMap, isNew }: {
+function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShare, onRename, onTag, onViewCode, copied, deleting, tagColorMap, isNew }: {
   d: Diagram; isFav: boolean; isShared: boolean;
-  onOpen: () => void; onToggleFav: () => void; onDelete: () => void; onShare: () => void; onRename: () => void; onTag: () => void;
+  onOpen: () => void; onToggleFav: () => void; onDelete: () => void; onShare: () => void; onRename: () => void; onTag: () => void; onViewCode: () => void;
   copied: boolean; deleting: boolean; tagColorMap: Map<string, typeof TAG_PALETTE[0]>; isNew: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -729,6 +729,12 @@ function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShar
       {/* Hover actions */}
       {hovered && (
         <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
+          <button onClick={onViewCode} title="View code"
+            style={{ width: 26, height: 26, borderRadius: 7, border: "1px solid #e4e6e8", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+          </button>
           <button onClick={onTag} title="Tags"
             style={{ width: 26, height: 26, borderRadius: 7, border: "1px solid #e4e6e8", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
             <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#8a8d91" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -776,6 +782,8 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const [showAIPrompt, setShowAIPrompt] = useState(false);
   const [taggingDiagram, setTaggingDiagram] = useState<Diagram | null>(null);
+  const [codeDiagram, setCodeDiagram] = useState<Diagram | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -995,6 +1003,7 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
     onShare: () => copyShareLink(d.id),
     onRename: () => setRenamingDiagram(d),
     onTag: () => setTaggingDiagram(d),
+    onViewCode: () => setCodeDiagram(d),
     copied: copied === d.id,
     deleting: deleting === d.id,
     tagColorMap,
@@ -1214,7 +1223,45 @@ export default function DiagramsClient({ user, diagrams: initial, onRefresh }: {
         </div>
       )}
 
-      <style>{`::-webkit-scrollbar { display: none; }`}</style>
+      {/* ── Code slide-in panel (from left) ── */}
+      {codeDiagram && (
+        <div onClick={() => { setCodeDiagram(null); setCodeCopied(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 1000, backdropFilter: "blur(4px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            position: "absolute", left: 0, top: 0, bottom: 0, width: 420, maxWidth: "90vw",
+            background: "#ffffff", boxShadow: "8px 0 32px rgba(0,0,0,0.12)",
+            display: "flex", flexDirection: "column",
+            animation: "dc-slide-left 0.2s ease-out",
+          }}>
+            {/* Header */}
+            <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid #e4e6e8", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#1c1e21" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1c1e21", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{codeDiagram.title}</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(codeDiagram.code); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); }}
+                style={{ background: codeCopied ? "#22c55e" : "#f4f5f7", border: "1px solid #e4e6e8", borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 600, color: codeCopied ? "#fff" : "#65676b", cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}
+              >{codeCopied ? "Copied!" : "Copy"}</button>
+              <button onClick={() => { setCodeDiagram(null); setCodeCopied(false); }} style={{ background: "none", border: "none", color: "#8a8d91", cursor: "pointer", fontSize: 18, lineHeight: 1, flexShrink: 0 }}>✕</button>
+            </div>
+            {/* Code */}
+            <div style={{ flex: 1, overflow: "auto", padding: 0 }}>
+              <pre style={{
+                margin: 0, padding: "16px 20px", fontSize: 12, lineHeight: 1.75, color: "#1c1e21",
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace", whiteSpace: "pre-wrap", wordBreak: "break-word",
+              }}>{codeDiagram.code}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        ::-webkit-scrollbar { display: none; }
+        @keyframes dc-slide-left {
+          from { transform: translateX(-100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
