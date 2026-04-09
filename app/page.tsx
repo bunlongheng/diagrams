@@ -496,7 +496,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const fpColor = pal[fi % pal.length];
         const lc = o.coloredLines ? fpColor : "#374151";
         const tc = o.coloredText ? fpColor : th.plainTextFill;
-        const pillTextFill = o.theme === "light" ? "#000000" : "#ffffff";
+        const pillTextFill = o.theme === "dark" ? "#ffffff" : fpColor;
         if (fi === ti) {
             const lowHeight = MG >= 30 && MG <= 70;
             if (lowHeight) {
@@ -511,7 +511,8 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                         parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.15" stroke="${fpColor}" stroke-width="1.5"/>`);
                     } else {
                         parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
-                        parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.5"/>`);
+                        parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.08" stroke="${fpColor}" stroke-width="1"/>`);
+
                     }
                     parts.push(`<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(msg.text)}</text>`);
                 } else {
@@ -675,14 +676,14 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl, onPresent,
+    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
     mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string | null;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void;
-    copyCode: () => void; copyLink: () => void; share: () => void; onPresent: () => void;
+    copyCode: () => void; copyLink: () => void; share: () => void;
 }) {
     const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
     const [tab, setTab] = useState<"general" | "components" | "share">("general");
@@ -789,11 +790,6 @@ function SettingsContent({
                     <p style={{ fontSize: fs(10), color: ut.sectionLabel, textAlign: "center", margin: 0, lineHeight: 1.5 }}>
                         Scan to open read-only canvas
                     </p>
-                    <button onClick={onPresent}
-                        className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                        style={{ background: ut.accent, color: "#221F22", cursor: "pointer", padding: mobile ? "10px 28px" : "8px 24px", fontSize: fs(12), border: "none" }}>
-                        ▶ Present
-                    </button>
                 </div>}
 
                 <div style={{ height: 1, background: ut.divider }} />
@@ -1071,10 +1067,11 @@ function DiagramEditor() {
     const [savedDiagramId, setSavedDiagramId] = useState<string | null>(null);
     const [isSharedDiagram, setIsSharedDiagram] = useState(false);
     const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
-    const [nodePopover, setNodePopover] = useState<{ pid: string; x: number; y: number } | null>(null);
+
 
     const diagramType = useMemo(() => detectDiagramType(deferredCode), [deferredCode]);
     const isSequence = diagramType === "sequence";
+    const diagram = useMemo(() => deferredCode.trim() ? parse(deferredCode) : parse("sequenceDiagram"), [deferredCode]);
 
     const [panX, setPanX] = useState(0);
     const [panY, setPanY] = useState(0);
@@ -1130,76 +1127,6 @@ function DiagramEditor() {
         }
     }, [code, savedDiagramId, supabaseUser, svgWrapRef]);
 
-    const insertParticipant = useCallback((anchorPid: string, position: "before" | "after") => {
-        setNodePopover(null);
-        const lines = code.split("\n");
-        // Find the line that declares this participant, or first message mentioning it
-        let anchorIdx = lines.findIndex(l => {
-            const m = l.trim().match(/^(?:participant|actor)\s+(\S+)/i);
-            return m && m[1] === anchorPid;
-        });
-        // If no explicit declaration, find first message line mentioning this pid
-        if (anchorIdx < 0) {
-            anchorIdx = lines.findIndex(l => {
-                const m = l.trim().match(/^(\w+)\s*(?:-->>|->>|-->|->)\s*(\w+):/);
-                return m && (m[1] === anchorPid || m[2] === anchorPid);
-            });
-        }
-        if (anchorIdx < 0) anchorIdx = 0;
-
-        // Generate a unique participant id
-        const existing = new Set(diagram.participants.map(p => p.id));
-        let newId = "Node";
-        let n = 1;
-        while (existing.has(newId)) { newId = `Node${++n}`; }
-
-        const insertIdx = position === "after" ? anchorIdx + 1 : anchorIdx;
-        lines.splice(insertIdx, 0, `participant ${newId}`);
-        setCode(lines.join("\n"));
-        setShowCode(true);
-        showToast(`Added ${newId}`, { color: "#22c55e" });
-    }, [code, diagram.participants]);
-
-    const insertMermaidNode = useCallback((anchorText: string, position: "sibling" | "child") => {
-        setNodePopover(null);
-        const lines = code.split("\n");
-        // Find the line containing this node text (strip mermaid shape wrappers)
-        const clean = anchorText.replace(/[()[\]{}]/g, "").trim();
-        let anchorIdx = -1;
-        let anchorIndent = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const stripped = lines[i].replace(/[()[\]{}]/g, "").trim();
-            if (stripped && clean && stripped.includes(clean)) {
-                anchorIdx = i;
-                anchorIndent = lines[i].search(/\S/);
-                break;
-            }
-        }
-        if (anchorIdx < 0) { anchorIdx = lines.length - 1; anchorIndent = 4; }
-
-        // Find end of this node's children block
-        let insertIdx = anchorIdx + 1;
-        if (position === "sibling") {
-            // Skip past any children (lines with deeper indent)
-            while (insertIdx < lines.length && (lines[insertIdx].trim() === "" || lines[insertIdx].search(/\S/) > anchorIndent)) insertIdx++;
-            const indent = " ".repeat(anchorIndent);
-            lines.splice(insertIdx, 0, `${indent}New Node`);
-        } else {
-            const childIndent = " ".repeat(anchorIndent + 2);
-            lines.splice(insertIdx, 0, `${childIndent}New Child`);
-        }
-        setCode(lines.join("\n"));
-        setShowCode(true);
-        showToast(`Added node`, { color: "#22c55e" });
-    }, [code]);
-
-    // Dismiss node popover on outside click
-    useEffect(() => {
-        if (!nodePopover) return;
-        const handler = (e: MouseEvent) => setNodePopover(null);
-        const timer = setTimeout(() => document.addEventListener("mousedown", handler), 0);
-        return () => { clearTimeout(timer); document.removeEventListener("mousedown", handler); };
-    }, [nodePopover]);
 
     const clampPan = useCallback((p: { x: number; y: number }): { x: number; y: number } => {
         const el = canvasRef.current;
@@ -1503,9 +1430,6 @@ function DiagramEditor() {
     // code is NOT persisted to localStorage — loaded from URL or paste only
     useEffect(() => { if (mounted) localStorage.setItem("nsd-opts", JSON.stringify(opts)); }, [opts, mounted]);
     useEffect(() => { if (mounted) localStorage.setItem("nsd-layout", JSON.stringify(layout)); }, [layout, mounted]);
-
-
-    const diagram = useMemo(() => deferredCode.trim() ? parse(deferredCode) : parse("sequenceDiagram"), [deferredCode]);
 
     // ── Auto layout — compute from diagram content ────────────────────────
     const computedLayout = useMemo((): Layout => {
@@ -2486,31 +2410,11 @@ function DiagramEditor() {
                                 onClick={e => {
                                     const el = (e.target as Element).closest("#diagram-title");
                                     if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); return; }
-                                    // Click on participant box → show add-node popover
-                                    const box = (e.target as Element).closest("[data-pid]") as SVGElement | null;
-                                    if (box) {
-                                        const pid = box.getAttribute("data-pid")!;
-                                        setNodePopover({ pid, x: e.clientX, y: e.clientY });
-                                        return;
-                                    }
-                                    setNodePopover(null);
                                 }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
                         ) : mounted && !isSequence && deferredCode.trim() ? (
-                            <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}
-                                onClick={e => {
-                                    // Find clicked mermaid node — look for nearest g with class containing "node" or text element
-                                    const target = e.target as Element;
-                                    const nodeG = target.closest(".mindmap-node, .node, [class*='node']") as SVGElement | null;
-                                    if (!nodeG) return;
-                                    // Extract text from the node
-                                    const textEl = nodeG.querySelector("text, .mindmap-node-label, foreignObject span, foreignObject div");
-                                    const nodeText = (textEl?.textContent ?? "").trim();
-                                    if (!nodeText) return;
-                                    setNodePopover({ pid: nodeText, x: e.clientX, y: e.clientY });
-                                }}
-                            >
+                            <div ref={svgWrapRef} style={{ position: "absolute", top: "50%", left: "50%", cursor: "default", willChange: "transform" }}>
                                 <div style={{ background: "#ffffff", borderRadius: 18, boxShadow: "0 4px 40px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)", padding: "48px 56px", minWidth: 480 }}>
                                     <MermaidRenderer code={deferredCode} dark={opts.theme === "dark"} onDims={(w, h) => { setMermaidDims({ w: w + 112, h: h + 96 }); setHasFit(false); }} />
                                 </div>
@@ -2565,35 +2469,6 @@ function DiagramEditor() {
                         />
                     )}
 
-                    {/* Node add popover */}
-                    {nodePopover && (() => {
-                        const btnStyle: React.CSSProperties = {
-                            display: "block", width: "100%", padding: "7px 12px", background: "transparent",
-                            border: "none", borderRadius: 6, color: ut.bodyText, fontSize: 12, fontWeight: 600,
-                            cursor: "pointer", textAlign: "left",
-                        };
-                        const hover = (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = ut.activeTab);
-                        const leave = (e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.background = "transparent");
-                        return (
-                            <div
-                                style={{
-                                    position: "fixed", left: nodePopover.x, top: nodePopover.y + 8,
-                                    zIndex: 200, background: ut.panelBg, border: `1px solid ${ut.panelBorder}`,
-                                    borderRadius: 10, padding: 4, boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-                                    minWidth: 160,
-                                }}
-                                onMouseDown={e => e.stopPropagation()}
-                            >
-                                {isSequence ? (<>
-                                    <button onClick={() => insertParticipant(nodePopover.pid, "before")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add node before</button>
-                                    <button onClick={() => insertParticipant(nodePopover.pid, "after")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add node after</button>
-                                </>) : (<>
-                                    <button onClick={() => insertMermaidNode(nodePopover.pid, "sibling")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add sibling</button>
-                                    <button onClick={() => insertMermaidNode(nodePopover.pid, "child")} style={btnStyle} onMouseEnter={hover} onMouseLeave={leave}>+ Add child</button>
-                                </>)}
-                            </div>
-                        );
-                    })()}
 
                 </div>
 
@@ -2602,7 +2477,7 @@ function DiagramEditor() {
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "12px 12px" }}>
                             <SettingsContent opts={opts} layout={computedLayout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} onPresent={enterPresenter} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
                         </div>
                     </div>
                 )}
@@ -2678,7 +2553,7 @@ function DiagramEditor() {
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} onPresent={enterPresenter} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
                         </div>
                     </div>
                 </div>

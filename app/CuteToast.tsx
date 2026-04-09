@@ -55,7 +55,7 @@ export function CuteToast() {
     return () => { listeners.delete(handler); };
   }, []);
 
-  if (!toast) return <style dangerouslySetInnerHTML={{ __html: KEYFRAMES }} />;
+  if (!toast) return null;
 
   const cx = typeof window !== 'undefined' ? window.innerWidth / 2 : 200;
   const cy = 28;
