@@ -496,7 +496,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const fpColor = pal[fi % pal.length];
         const lc = o.coloredLines ? fpColor : "#374151";
         const tc = o.coloredText ? fpColor : th.plainTextFill;
-        const pillTextFill = o.theme === "dark" ? "#ffffff" : fpColor;
+        const pillTextFill = o.theme === "dark" ? "#ffffff" : "#000000";
         if (fi === ti) {
             const lowHeight = MG >= 30 && MG <= 70;
             if (lowHeight) {
@@ -533,7 +533,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                     parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.15" stroke="${fpColor}" stroke-width="1.5"/>`);
                 } else {
                     parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
-                    parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.5"/>`);
+                    parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.08" stroke="${fpColor}" stroke-width="1"/>`);
                 }
                 parts.push(`<text x="${pillX + pillW / 2}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(msg.text)}</text>`);
             } else {
@@ -578,7 +578,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                     parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.15" stroke="${fpColor}" stroke-width="1.5"/>`);
                 } else {
                     parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${th.bg}"/>`);
-                    parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.5"/>`);
+                    parts.push(`<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="${pillH / 2}" fill="${fpColor}" fill-opacity="0.08" stroke="${fpColor}" stroke-width="1"/>`);
                 }
                 parts.push(`<text x="${pillCx}" y="${pillY + pillH / 2 + 1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${FS}" font-weight="600" fill="${pillTextFill}">${esc(pillText)}</text>`);
             } else {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { isLocal } from "@/lib/is-local";
 
 function toSlug(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled";
@@ -26,10 +27,12 @@ CRITICAL rules:
 - Escape all newlines as \\n in the JSON string`;
 
 export async function POST(req: NextRequest) {
-  // ── Auth: session cookie only (UI-facing route) ───────────────────────────
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // ── Auth: bypass for localhost/LAN, require session in production ──────────
+  if (!isLocal(req)) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let body: { prompt?: string };
   try { body = await req.json(); } catch {
