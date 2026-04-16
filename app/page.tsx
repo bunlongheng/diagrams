@@ -362,14 +362,29 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             notesByCol.get(col)!.push(note);
         });
     }
+    // Compute the max width a note in column `colI` can grow to without overlapping neighbors.
+    // It can expand up to half the gap to the previous column and half the gap to the next column.
+    // First/last columns can extend to within LP of the SVG edge.
+    const noteMaxW = (colI: number) => {
+        const leftGap = colI > 0 ? colGap[colI - 1] : (colX[colI] - LP) * 2;
+        const rightGap = colI < N - 1 ? colGap[colI] : (W - colX[colI] - LP) * 2;
+        return Math.max(pBW[colI] ?? BW, Math.floor((leftGap + rightGap) * 0.45));
+    };
+    // Compute the actual width a note will use: max(box width, fit-longest-line) clamped to noteMaxW
+    const noteFitW = (colI: number, text: string) => {
+        const rawLines = text.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
+        const longest = rawLines.reduce((m, l) => Math.max(m, l.length), 0);
+        const desired = Math.ceil(longest * (FS * 0.58)) + NOTE_HPAD * 2;
+        return Math.max(pBW[colI] ?? BW, Math.min(desired, noteMaxW(colI)));
+    };
     let notesSectionH = 0;
     if (notesByCol.size > 0) {
         let maxColH = 0;
         notesByCol.forEach((colNotes, colI) => {
             let colH = 0;
-            const bw = pBW[colI] ?? BW;
-            const maxChars = Math.max(8, Math.floor((bw - NOTE_HPAD * 2) / (FS * 0.58)));
             colNotes.forEach(note => {
+                const nw = noteFitW(colI, note.text);
+                const maxChars = Math.max(8, Math.floor((nw - NOTE_HPAD * 2) / (FS * 0.58)));
                 const rawLines = note.text.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
                 let wCount = 0;
                 rawLines.forEach(raw => {
@@ -603,8 +618,8 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
                 const noteText  = o.theme === "light" ? "#111111" : th.plainTextFill;
                 const rawLines = note.text.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
                 if (!rawLines.length) return;
-                // Width matches participant box exactly
-                const nw = pBW[colI];
+                // Expand width to fit longest line, clamped to available column space
+                const nw = noteFitW(colI, note.text);
                 const nx = cx(colI) - nw / 2;
                 // Word-wrap each raw line to fit within box
                 const maxChars = Math.max(8, Math.floor((nw - NOTE_HPAD * 2) / (FS * 0.58)));
@@ -676,7 +691,7 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl,
+    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
     mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string | null;
@@ -684,9 +699,10 @@ function SettingsContent({
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportCode: () => void; exportJson: () => void;
     copyCode: () => void; copyLink: () => void; share: () => void;
+    tab: "general" | "components" | "share"; setTab: (t: "general" | "components" | "share") => void;
+    selectedPid?: string | null;
 }) {
     const fs = (base: number) => mobile ? Math.round(base * 1.2) : base;
-    const [tab, setTab] = useState<"general" | "components" | "share">("general");
     const ut = UI_THEMES[opts.theme] ?? UI_THEMES.light;
 
     return (
@@ -892,8 +908,14 @@ function SettingsContent({
                         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                             {participants.map(p => {
                                 const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
+                                const isSelected = selectedPid === p.id;
                                 return (
-                                    <div key={p.id} style={{ display: "flex", alignItems: "stretch", borderRadius: 8, border: "2px solid #111", overflow: "hidden", height: 36 }}>
+                                    <div key={p.id} data-icon-row={p.id} style={{
+                                        display: "flex", alignItems: "stretch", borderRadius: 8,
+                                        border: isSelected ? "2px solid #3b82f6" : "2px solid #111",
+                                        boxShadow: isSelected ? "0 0 0 2px rgba(59,130,246,0.35)" : "none",
+                                        overflow: "hidden", height: 36, transition: "box-shadow 0.15s, border-color 0.15s",
+                                    }}>
                                         {/* White icon section — click to change icon */}
                                         <IconPicker value={currentKey} color={p.color} ut={ut} onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })} />
                                         {/* Colored label section with overlay */}
@@ -913,7 +935,7 @@ function SettingsContent({
                                                     }
                                                 }}
                                                 onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                                                style={{ fontSize: fs(12), fontWeight: 700, color: "#fff", flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0 }}
+                                                style={{ fontSize: fs(12), fontWeight: 700, color: "#000", flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0 }}
                                             />
                                         </div>
                                     </div>
@@ -1072,6 +1094,9 @@ function DiagramEditor() {
     const diagramType = useMemo(() => detectDiagramType(deferredCode), [deferredCode]);
     const isSequence = diagramType === "sequence";
     const diagram = useMemo(() => deferredCode.trim() ? parse(deferredCode) : parse("sequenceDiagram"), [deferredCode]);
+
+    const [selectedPid, setSelectedPid] = useState<string | null>(null);
+    const [settingsTab, setSettingsTab] = useState<"general" | "components" | "share">("general");
 
     const [panX, setPanX] = useState(0);
     const [panY, setPanY] = useState(0);
@@ -1500,6 +1525,53 @@ function DiagramEditor() {
             return () => cancelAnimationFrame(id);
         }
     }, [svgDims, hasFit, fitZoom]);
+
+    // Highlight selected participant box — adds a blue outline rect ON TOP of the existing box
+    // (does not overwrite the original black border)
+    useEffect(() => {
+        if (!svgWrapRef.current) return;
+        const groups = svgWrapRef.current.querySelectorAll<SVGElement>("[data-pid]");
+        groups.forEach(g => {
+            // Remove any prior highlight overlay
+            g.querySelector(".pid-highlight")?.remove();
+            if (g.getAttribute("data-pid") !== selectedPid) return;
+            const rect = g.querySelector<SVGRectElement>("rect");
+            if (!rect) return;
+            const x = parseFloat(rect.getAttribute("x") || "0");
+            const y = parseFloat(rect.getAttribute("y") || "0");
+            const w = parseFloat(rect.getAttribute("width") || "0");
+            const h = parseFloat(rect.getAttribute("height") || "0");
+            const r = parseFloat(rect.getAttribute("rx") || "0");
+            const offset = 4;
+            const ns = "http://www.w3.org/2000/svg";
+            const overlay = document.createElementNS(ns, "rect");
+            overlay.setAttribute("class", "pid-highlight");
+            overlay.setAttribute("x", String(x - offset));
+            overlay.setAttribute("y", String(y - offset));
+            overlay.setAttribute("width", String(w + offset * 2));
+            overlay.setAttribute("height", String(h + offset * 2));
+            overlay.setAttribute("rx", String(r + offset));
+            overlay.setAttribute("fill", "none");
+            overlay.setAttribute("stroke", "#3b82f6");
+            overlay.setAttribute("stroke-width", "2.5");
+            overlay.setAttribute("pointer-events", "none");
+            overlay.style.filter = "drop-shadow(0 0 6px rgba(59,130,246,0.55))";
+            g.appendChild(overlay);
+        });
+    }, [selectedPid, activeSvg]);
+
+    // When a participant is clicked, auto-open the Format panel and switch to Components tab
+    useEffect(() => {
+        if (!selectedPid) return;
+        setShowSettings(true);
+        setSettingsTab("components");
+        // Scroll the matching icon row into view after the panel renders
+        const id = requestAnimationFrame(() => {
+            document.querySelector(`[data-icon-row="${CSS.escape(selectedPid)}"]`)
+                ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+        return () => cancelAnimationFrame(id);
+    }, [selectedPid]);
 
     const panelMounted = useRef(false);
     useEffect(() => {
@@ -2410,6 +2482,13 @@ function DiagramEditor() {
                                 onClick={e => {
                                     const el = (e.target as Element).closest("#diagram-title");
                                     if (el) { setTitleEdit({ value: diagram.title ?? DEFAULT_DIAGRAM_TITLE, rect: el.getBoundingClientRect() }); return; }
+                                    const box = (e.target as Element).closest("[data-pid]") as SVGElement | null;
+                                    if (box) {
+                                        const pid = box.getAttribute("data-pid");
+                                        setSelectedPid(prev => (prev === pid ? null : pid));
+                                        return;
+                                    }
+                                    setSelectedPid(null);
                                 }}
                                 dangerouslySetInnerHTML={{ __html: activeSvg }}
                             />
@@ -2477,7 +2556,7 @@ function DiagramEditor() {
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "12px 12px" }}>
                             <SettingsContent opts={opts} layout={computedLayout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
                         </div>
                     </div>
                 )}
@@ -2553,7 +2632,7 @@ function DiagramEditor() {
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
                         </div>
                     </div>
                 </div>

@@ -34,3 +34,4 @@ yarn-error.log*
 tsconfig.tsbuildinfo
 smoke-test.mjs
 package-lock.json
+.env*.local
