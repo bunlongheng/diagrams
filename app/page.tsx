@@ -32,10 +32,10 @@ type Arrow = "solid" | "dashed";
 interface SeqMsg { from: string; to: string; text: string; arrow: Arrow; step: number; seqPos: number; displayStep?: number }
 interface SeqNote { participants: string[]; text: string; position: "over" | "left" | "right"; seqPos: number }
 interface Diagram { participants: Participant[]; messages: SeqMsg[]; notes: SeqNote[]; title?: string; totalSteps: number }
-interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; showNotes: boolean; font: string; lifelineDash: string; theme: string; iconMode: "none" | "icons" | "emoji"; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string> }
+interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: boolean; showNotes: boolean; font: string; lifelineDash: string; theme: string; iconMode: "none" | "icons" | "emoji"; icons: Record<string,string>; boxOverlay: string; autoLayout: boolean; labelOverrides: Record<string,string>; colorOverrides: Record<string,string> }
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
-const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: true, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "icons", icons: {}, boxOverlay: "gloss", autoLayout: true, labelOverrides: {} };
+const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: true, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "icons", icons: {}, boxOverlay: "gloss", autoLayout: true, labelOverrides: {}, colorOverrides: {} };
 const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 28 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -412,6 +412,8 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const lifelineCapAttr = ld.cap ? ` stroke-linecap="${ld.cap}"` : "";
     const th = THEMES[o.theme] ?? THEMES.light;
     const pal = o.theme === "monokai" ? PAL_MONOKAI : PAL;
+    // Resolve participant color: explicit override wins over palette index
+    const pcol = (i: number) => o.colorOverrides?.[ps[i].id] ?? pal[i % pal.length];
     // long-dash style for dashed (response) arrows
     const DASHED_STYLE = ` stroke-dasharray="3 4" stroke-width="1.5"`;
     const parts: string[] = [];
@@ -431,7 +433,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     parts.push(`<text id="diagram-title" x="${LP}" y="${titleY - 10}" dominant-baseline="middle" font-family="${f}" font-size="${titleFS}" font-weight="800" fill="${titleColor}" style="cursor:pointer">${esc(diagramTitle)}</text>`);
     parts.push(`<text x="${LP}" y="${titleY + 20}" dominant-baseline="middle" font-family="${f}" font-size="11" fill="${subDate}"><tspan font-weight="800" fill="${subBH}">BH</tspan><tspan font-weight="300" fill="${subPipe}"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
     ps.forEach((p, i) => {
-        const col = pal[i % pal.length];
+        const col = pcol(i);
         const c = o.coloredLines ? col + "60" : "#d1d5db";
         parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
     });
@@ -439,7 +441,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         p = { ...p, label: p.label.replace(/<br\s*\/?>/gi, " ").trim() };
         const bw = pBW[i];
         const x = cx(i) - bw / 2;
-        const col = pal[i % pal.length];
+        const col = pcol(i);
         parts.push(`<g data-pid="${p.id}" style="cursor:pointer">`);
         parts.push(`<rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}" fill="${col}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
         if (o.boxOverlay !== "none") {
@@ -484,7 +486,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             parts.push(`<text x="${x + IW + (bw - IW)/2}" y="${y+BH/2+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="${BOX_FS}" font-weight="700" fill="${th.labelFill}">${esc(labelText)}</text>`);
         } else if (o.iconMode === "icons") {
             const IW = BH; // white section is square
-            const pColor = pal[i % pal.length];
+            const pColor = pcol(i);
             const ISIZE = Math.min(BH - 8, 18);
             const iconKey = ICON_NODES[o.icons[p.id]] ? o.icons[p.id] : guessIconKey(p.label);
             // Left-rounded path: inner radius = BR-1 so it sits perfectly inside the box stroke
@@ -508,7 +510,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
         const y = msgY(msg.seqPos);
         const fx = cx(fi), tx = cx(ti);
         const fp = ps[fi];
-        const fpColor = pal[fi % pal.length];
+        const fpColor = pcol(fi);
         const lc = o.coloredLines ? fpColor : "#374151";
         const tc = o.coloredText ? fpColor : th.plainTextFill;
         const pillTextFill = o.theme === "dark" ? "#ffffff" : "#000000";
@@ -612,7 +614,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
             let curY = secY;
             colNotes.forEach(note => {
                 const pis = note.participants.map(id => idx.get(id)).filter((i): i is number => i !== undefined);
-                const noteColor = pal[colI % pal.length];
+                const noteColor = pcol(colI);
                 const noteFill  = noteColor + (o.theme === "light" ? "88" : "66");
                 const noteStroke = noteColor;
                 const noteText  = o.theme === "light" ? "#111111" : th.plainTextFill;
@@ -909,6 +911,8 @@ function SettingsContent({
                             {participants.map(p => {
                                 const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
                                 const isSelected = selectedPid === p.id;
+                                const effectiveColor = opts.colorOverrides?.[p.id] ?? p.color;
+                                const hasOverride = !!opts.colorOverrides?.[p.id];
                                 return (
                                     <div key={p.id} data-icon-row={p.id} style={{
                                         display: "flex", alignItems: "stretch", borderRadius: 8,
@@ -917,9 +921,9 @@ function SettingsContent({
                                         overflow: "hidden", height: 36, transition: "box-shadow 0.15s, border-color 0.15s",
                                     }}>
                                         {/* White icon section — click to change icon */}
-                                        <IconPicker value={currentKey} color={p.color} ut={ut} onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })} />
+                                        <IconPicker value={currentKey} color={effectiveColor} ut={ut} onChange={k => upd({ icons: { ...opts.icons, [p.id]: k } })} />
                                         {/* Colored label section with overlay */}
-                                        <div style={{ flex: 1, background: p.color, display: "flex", alignItems: "center", paddingLeft: 10, borderLeft: "1px solid rgba(255,255,255,0.25)", position: "relative", overflow: "hidden" }}>
+                                        <div style={{ flex: 1, background: effectiveColor, display: "flex", alignItems: "center", paddingLeft: 10, borderLeft: "1px solid rgba(255,255,255,0.25)", position: "relative", overflow: "hidden" }}>
                                             {opts.boxOverlay === "gloss" && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.18) 55%, transparent 55%)", pointerEvents: "none" }} />}
                                             {opts.boxOverlay === "hatch" && <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 9px)", pointerEvents: "none" }} />}
                                             {opts.boxOverlay === "dots" && <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.22) 1.2px, transparent 1.2px)", backgroundSize: "7px 7px", pointerEvents: "none" }} />}
@@ -937,6 +941,23 @@ function SettingsContent({
                                                 onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
                                                 style={{ fontSize: fs(12), fontWeight: 700, color: "#000", flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: "inherit", padding: 0 }}
                                             />
+                                            {/* Color picker swatch — click to change color */}
+                                            <label title={hasOverride ? "Reset to default color (right-click)" : "Pick color"} style={{
+                                                position: "relative", width: 22, height: 22, borderRadius: 4,
+                                                border: "1.5px solid rgba(255,255,255,0.7)", background: effectiveColor,
+                                                cursor: "pointer", marginRight: 6, flexShrink: 0,
+                                                boxShadow: hasOverride ? "0 0 0 1px #fff inset" : "none",
+                                            }}
+                                                onContextMenu={e => {
+                                                    e.preventDefault();
+                                                    if (!hasOverride) return;
+                                                    const next = { ...opts.colorOverrides }; delete next[p.id]; upd({ colorOverrides: next });
+                                                }}>
+                                                <input type="color" value={effectiveColor}
+                                                    onChange={e => upd({ colorOverrides: { ...opts.colorOverrides, [p.id]: e.currentTarget.value } })}
+                                                    style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", border: "none", padding: 0 }}
+                                                />
+                                            </label>
                                         </div>
                                     </div>
                                 );
@@ -1063,14 +1084,12 @@ export default function Home() {
 // ── Editor ────────────────────────────────────────────────────────────────────
 function DiagramEditor() {
     const [supabaseUser, setSupabaseUser] = useState<{ id: string; email?: string; user_metadata?: Record<string,string> } | null>(null);
-    const [showUserMenu, setShowUserMenu] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [code, setCode] = useState("");
     const deferredCode = useDeferredValue(code);
     const [showCode, setShowCode] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [editorDark, setEditorDark] = useState(false);
     const [codeWidth, setCodeWidth] = useState(340);
     const [copied, setCopied] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
@@ -1084,7 +1103,6 @@ function DiagramEditor() {
     const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
     const [zoom, setZoom] = useState(1.0);
     const [viewMode, setViewMode] = useState(false);
-    const [hoverScreenY, setHoverScreenY] = useState<number | null>(null);
     const [lanIp, setLanIp] = useState<string | null>(null);
     const [savedDiagramId, setSavedDiagramId] = useState<string | null>(null);
     const [isSharedDiagram, setIsSharedDiagram] = useState(false);
@@ -1100,8 +1118,6 @@ function DiagramEditor() {
 
     const [panX, setPanX] = useState(0);
     const [panY, setPanY] = useState(0);
-    const [isPanning, setIsPanning] = useState(false);
-
     const canvasRef = useRef<HTMLDivElement>(null);
     const svgWrapRef = useRef<HTMLDivElement>(null);
     const isResizing = useRef(false);
@@ -1250,7 +1266,6 @@ function DiagramEditor() {
         let startPanX = 0, startPanY = 0;
         let startPinchDist: number | null = null;
         let startZoomVal = 1;
-        let startPinchPanX = 0, startPinchPanY = 0;
         let isTouchPanning = false;
 
         const getDist = (t: TouchList) => {
@@ -1263,14 +1278,6 @@ function DiagramEditor() {
             if (e.touches.length === 2) {
                 startPinchDist = getDist(e.touches);
                 startZoomVal = zoomRef.current;
-                startPinchPanX = panRef.current.x;
-                startPinchPanY = panRef.current.y;
-                // midpoint relative to canvas center
-                const rect = el.getBoundingClientRect();
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
-                startPinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - cx;
-                startPinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - cy;
                 isTouchPanning = false;
             } else if (e.touches.length === 1) {
                 isTouchPanning = true;
@@ -1282,16 +1289,12 @@ function DiagramEditor() {
             }
         };
 
-        let startPinchMidX = 0, startPinchMidY = 0;
-
         const onTouchMove = (e: TouchEvent) => {
             if (e.touches.length === 2 && startPinchDist !== null) {
                 e.preventDefault();
                 const d = getDist(e.touches);
                 const ratio = d / startPinchDist;
                 const newZoom = Math.min(4, Math.max(0.1, startZoomVal * ratio));
-                const zoomRatio = newZoom / startZoomVal;
-                zoomRef.current = newZoom;
                 zoomRef.current = newZoom;
                 applyTransform(panRef.current, zoomRef.current);
                 flashZoomHud(newZoom);
@@ -1331,7 +1334,7 @@ function DiagramEditor() {
             applyTransform(panRef.current, zoomRef.current);
         };
         const onUp = () => {
-            if (isDragging.current) { isDragging.current = false; setIsPanning(false); syncTransformState(); }
+            if (isDragging.current) { isDragging.current = false; syncTransformState(); }
         };
         window.addEventListener("mousemove", onMove);
         window.addEventListener("mouseup", onUp);
@@ -1431,15 +1434,11 @@ function DiagramEditor() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSupabaseUser(session?.user ?? null);
         });
-        // Close user menu on outside click
-        const closeMenu = () => setShowUserMenu(false);
-        window.addEventListener("click", closeMenu, true);
         // Fetch LAN IP for QR code when on localhost
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
             fetch("/api/lan-ip").then(r => r.json()).then(d => { if (d.ip) setLanIp(d.ip); }).catch(() => {});
         }
         return () => {
-            window.removeEventListener("click", closeMenu, true);
             subscription.unsubscribe();
         };
     }, []);
@@ -1848,7 +1847,6 @@ function DiagramEditor() {
     const presenterSelectedEl = useRef<SVGElement | null>(null);
     const spotlightRef = useRef<HTMLDivElement | null>(null);
     const spotlightActiveRef = useRef(false);
-    const [spotlightActive, setSpotlightActive] = useState(false);
 
     const enterPresenter = useCallback(() => {
         setViewMode(true);
@@ -1920,7 +1918,6 @@ function DiagramEditor() {
                 style={{ position: "relative", width: "100svw", height: "100svh", overflow: "hidden", background: "#e8eaf0", fontFamily: "Inter, sans-serif", cursor: isMobile ? "default" : "crosshair", touchAction: "none", userSelect: "none" }}
                 onMouseMove={e => {
                     const rect = canvasRef.current!.getBoundingClientRect();
-                    setHoverScreenY(e.clientY - rect.top);
                     // Spotlight: update gradient center directly — no React re-render
                     if (spotlightActiveRef.current && spotlightRef.current) {
                         const x = e.clientX - rect.left;
@@ -1929,9 +1926,8 @@ function DiagramEditor() {
                     }
                 }}
                 onMouseLeave={() => {
-                    setHoverScreenY(null);
                     if (spotlightActiveRef.current) {
-                        spotlightActiveRef.current = false; setSpotlightActive(false);
+                        spotlightActiveRef.current = false;
                         if (canvasRef.current) canvasRef.current.style.cursor = "crosshair";
                         if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
                     }
@@ -1941,7 +1937,6 @@ function DiagramEditor() {
                     e.preventDefault();
                     // Left-click hold → spotlight mode
                     spotlightActiveRef.current = true;
-                    setSpotlightActive(true);
                     if (spotlightRef.current) {
                         const rect = canvasRef.current!.getBoundingClientRect();
                         const x = e.clientX - rect.left;
@@ -1954,7 +1949,6 @@ function DiagramEditor() {
                     if (e.button !== 0) return;
                     if (spotlightActiveRef.current) {
                         spotlightActiveRef.current = false;
-                        setSpotlightActive(false);
                         if (canvasRef.current) canvasRef.current.style.cursor = "crosshair";
                         if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
                         return; // don't fire click highlight when releasing spotlight
@@ -2463,7 +2457,6 @@ function DiagramEditor() {
                             if ((e.target as HTMLElement).closest("button,#diagram-title,[data-pid],.mindmap-node,.node,[class*='node']")) return;
                             if (opts.autoLayout) upd({ autoLayout: false });
                             isDragging.current = true;
-                            setIsPanning(true);
                             dragStartMouse.current = { x: e.clientX, y: e.clientY };
                             dragStartPan.current = { x: panRef.current.x, y: panRef.current.y };
                             e.preventDefault();
