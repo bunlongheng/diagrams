@@ -34,16 +34,6 @@ function relativeTime(d: string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ── Diagram type icon ─────────────────────────────────────────────────────────
-function DiagramTypeIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#1c1e21" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx={18} cy={5} r={3} /><circle cx={6} cy={12} r={3} /><circle cx={18} cy={19} r={3} />
-      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
-    </svg>
-  );
-}
-
 // ── Diagram minimap ───────────────────────────────────────────────────────────
 function DiagramMinimap({ code, type }: { code: string; type: string }) {
   const W = 224, H = 112;
@@ -763,7 +753,7 @@ function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShar
 const LS_KEY = "diagrams_user_cache";
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function DiagramsClient({ user, diagrams: initial, onRefresh }: { user: User; diagrams: Diagram[]; onRefresh?: () => void }) {
+export default function DiagramsClient({ user, diagrams: initial }: { user: User; diagrams: Diagram[] }) {
   const [diagrams, setDiagrams] = useState(initial);
   useEffect(() => { setDiagrams(initial); }, [initial]);
 

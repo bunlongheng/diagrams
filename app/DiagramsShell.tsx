@@ -87,5 +87,5 @@ export default function DiagramsShell() {
     );
   }
 
-  return <DiagramsClient user={user} diagrams={diagrams} onRefresh={() => {}} />;
+  return <DiagramsClient user={user} diagrams={diagrams} />;
 }
