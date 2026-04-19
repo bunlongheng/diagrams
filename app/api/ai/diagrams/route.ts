@@ -14,7 +14,6 @@ function toSlug(title: string): string {
  * POST /api/ai/diagrams
  *
  * Creates a diagram on behalf of the owner with:
- *   - is_favorite = true
  *   - boxOverlay  = "gloss"
  *   - iconMode    = "icons"
  *
@@ -146,7 +145,7 @@ export async function POST(req: NextRequest) {
       slug,
       code: code.trim(),
       diagram_type: diagramType,
-      is_favorite: true,
+
       tags: ["API"],
       settings,
     })

@@ -9,7 +9,7 @@ import { Bot, Plug, Briefcase, User as UserIcon, FlaskConical, Clipboard, Gradua
 type Diagram = {
   id: string; title: string; slug: string;
   diagram_type: string; created_at: string; updated_at: string; code: string;
-  is_favorite: boolean; tags: string[];
+  tags: string[];
 };
 
 // ── Shared (public) ───────────────────────────────────────────────────────────

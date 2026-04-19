@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { isLocal } from "@/lib/is-local";
 
 // GET /api/diagrams/[id] — public only if is_public=true, else requires auth
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -8,8 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { data, error } = await admin.from("diagrams").select().eq("id", id).single();
   if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // If not public, require auth
-  if (!data.is_public) {
+  // If not public, require auth (bypass on localhost)
+  if (!data.is_public && !isLocal(req)) {
     const bearer = req.headers.get("authorization")?.replace("Bearer ", "").trim();
     let authed = false;
     if (bearer) {
