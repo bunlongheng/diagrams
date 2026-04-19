@@ -1097,13 +1097,8 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
           </div>
         )}
 
-        {/* All Diagrams */}
         {allDiagrams.length > 0 && (
           <section>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#8a8d91", textTransform: "uppercase", letterSpacing: "0.08em" }}>All Diagrams</span>
-              <span style={{ fontSize: 11, color: "#bcc0c4", fontWeight: 500 }}>{allDiagrams.length}</span>
-            </div>
             <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
               {allDiagrams.map(d => <DiagramCard key={d.id} {...cardProps(d)} />)}
             </div>
