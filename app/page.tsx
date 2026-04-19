@@ -1071,18 +1071,28 @@ export default function Home() {
 
     useEffect(() => {
         const p = new URLSearchParams(window.location.search);
-
         if (p.has("id") || p.has("new")) { setView("editor"); return; }
 
-        // ?data= is handled directly in DiagramEditor
+        // Listen for popstate (browser back) to return to index
+        const onPop = () => {
+            const q = new URLSearchParams(window.location.search);
+            setView(q.has("id") || q.has("new") || q.has("data") ? "editor" : "index");
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
+
+    const goBack = useCallback(() => {
+        window.history.pushState(null, "", "/");
+        setView("index");
     }, []);
 
     if (view === "index") return <DiagramsShell />;
-    return <DiagramEditor />;
+    return <DiagramEditor goBack={goBack} />;
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────────
-function DiagramEditor() {
+function DiagramEditor({ goBack }: { goBack: () => void }) {
     const [supabaseUser, setSupabaseUser] = useState<{ id: string; email?: string; user_metadata?: Record<string,string> } | null>(null);
     const [mounted, setMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -2256,7 +2266,7 @@ function DiagramEditor() {
 
                 {/* Back — ideas-style floating pill */}
                 <button
-                    onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/")}
+                    onClick={goBack}
                     style={{
                         width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                         border: `1px solid ${ut.headerBorder}`,
