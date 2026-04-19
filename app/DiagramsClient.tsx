@@ -660,9 +660,9 @@ function RenameModal({ title, onSave, onClose }: { title: string; onSave: (t: st
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShare, onRename, onTag, onViewCode, copied, deleting, tagColorMap, isNew }: {
-  d: Diagram; isFav: boolean; isShared: boolean;
-  onOpen: () => void; onToggleFav: () => void; onDelete: () => void; onShare: () => void; onRename: () => void; onTag: () => void; onViewCode: () => void;
+function DiagramCard({ d, isShared, onOpen, onDelete, onShare, onRename, onTag, onViewCode, copied, deleting, tagColorMap, isNew }: {
+  d: Diagram; isShared: boolean;
+  onOpen: () => void; onDelete: () => void; onShare: () => void; onRename: () => void; onTag: () => void; onViewCode: () => void;
   copied: boolean; deleting: boolean; tagColorMap: Map<string, typeof TAG_PALETTE[0]>; isNew: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -731,12 +731,6 @@ function DiagramCard({ d, isFav, isShared, onOpen, onToggleFav, onDelete, onShar
               <path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l7.3-7.3a1 1 0 0 0 0-1.41L12 2z"/><circle cx="7" cy="7" r="1.5" fill="#8a8d91"/>
             </svg>
           </button>
-          <button onClick={onToggleFav} title={isFav ? "Unfavorite" : "Favorite"}
-            style={{ width: 26, height: 26, borderRadius: 7, border: "1px solid #e4e6e8", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-            <svg width={12} height={12} viewBox="0 0 24 24" fill={isFav ? "#f59e0b" : "none"} stroke={isFav ? "#f59e0b" : "#8a8d91"} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-          </button>
           <button onClick={onDelete} title="Delete" disabled={deleting}
             style={{ width: 26, height: 26, borderRadius: 7, border: "1px solid #e4e6e8", background: "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", opacity: deleting ? 0.5 : 1 }}>
             <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -757,8 +751,6 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
   const [diagrams, setDiagrams] = useState(initial);
   useEffect(() => { setDiagrams(initial); }, [initial]);
 
-  const [favs, setFavs] = useState<Set<string>>(() => new Set(initial.filter(d => d.is_favorite).map(d => d.id)));
-  useEffect(() => { setFavs(new Set(initial.filter(d => d.is_favorite).map(d => d.id))); }, [initial]);
   const [shared, setShared] = useState<Set<string>>(loadShared);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -823,7 +815,6 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "diagrams" }, (payload: { new: Diagram }) => {
         const d = payload.new as Diagram;
         setDiagrams(prev => prev.some(x => x.id === d.id) ? prev : [d, ...prev]);
-        if (d.is_favorite) setFavs(prev => new Set([...prev, d.id]));
         playChime();
         showToast(`✦ "${d.title}" created by AI`, { color: "#1c1e21" });
         setNewCardId(d.id);
@@ -884,16 +875,6 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
     setRenamingDiagram(null);
   }
 
-  function toggleFav(id: string) {
-    setFavs(prev => {
-      const next = new Set(prev);
-      const isFav = next.has(id);
-      if (isFav) next.delete(id); else next.add(id);
-      createClient().from("diagrams").update({ is_favorite: !isFav }).eq("id", id).then(() => {});
-      return next;
-    });
-  }
-
   async function saveTags(id: string, tags: string[]) {
     const { error } = await createClient().from("diagrams").update({ tags }).eq("id", id);
     if (error) { showToast(`Failed to save tags: ${error.message}`, { color: "#ef4444" }); return; }
@@ -934,7 +915,6 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
     }
     showToast("Deleted ✓", { color: "#64748b" });
     setDiagrams(prev => prev.filter(d => d.id !== id));
-    setFavs(prev => { const next = new Set(prev); next.delete(id); return next; });
     setDeleting(null);
   }
 
@@ -982,13 +962,11 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
   });
 
   const byUpdated = (a: Diagram, b: Diagram) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at);
-  const favDiagrams = filtered.filter(d => favs.has(d.id)).sort(byUpdated);
-  const recentDiagrams = filtered.filter(d => !favs.has(d.id)).sort(byUpdated);
+  const allDiagrams = filtered.sort(byUpdated);
 
   const cardProps = (d: Diagram) => ({
-    d, isFav: favs.has(d.id), isShared: shared.has(d.id),
+    d, isShared: shared.has(d.id),
     onOpen: () => openInEditor(d),
-    onToggleFav: () => toggleFav(d.id),
     onDelete: () => setConfirmDeleteId(d.id),
     onShare: () => copyShareLink(d.id),
     onRename: () => setRenamingDiagram(d),
@@ -1119,31 +1097,15 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
           </div>
         )}
 
-        {/* Favorites */}
-        {favDiagrams.length > 0 && (
-          <section style={{ marginBottom: 36 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-              <svg width={12} height={12} viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#8a8d91", textTransform: "uppercase", letterSpacing: "0.08em" }}>Favorites</span>
-              <span style={{ fontSize: 11, color: "#bcc0c4", fontWeight: 500 }}>{favDiagrams.length}</span>
-            </div>
-            <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-              {favDiagrams.map(d => <DiagramCard key={d.id} {...cardProps(d)} />)}
-            </div>
-          </section>
-        )}
-
-        {/* All / Recent */}
-        {recentDiagrams.length > 0 && (
+        {/* All Diagrams */}
+        {allDiagrams.length > 0 && (
           <section>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#8a8d91", textTransform: "uppercase", letterSpacing: "0.08em" }}>{favDiagrams.length > 0 ? "Recent" : "All Diagrams"}</span>
-              <span style={{ fontSize: 11, color: "#bcc0c4", fontWeight: 500 }}>{recentDiagrams.length}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#8a8d91", textTransform: "uppercase", letterSpacing: "0.08em" }}>All Diagrams</span>
+              <span style={{ fontSize: 11, color: "#bcc0c4", fontWeight: 500 }}>{allDiagrams.length}</span>
             </div>
             <div className="dc-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-              {recentDiagrams.map(d => <DiagramCard key={d.id} {...cardProps(d)} />)}
+              {allDiagrams.map(d => <DiagramCard key={d.id} {...cardProps(d)} />)}
             </div>
           </section>
         )}
