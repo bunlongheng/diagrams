@@ -13,6 +13,9 @@ function toSlug(title: string): string {
 /**
  * POST /api/ai/diagrams
  *
+ * ONLY sequence diagrams are accepted. Flowcharts, architecture,
+ * class, ER, gantt, pie, mindmap, etc. will be rejected with 400.
+ *
  * Creates a diagram on behalf of the owner with:
  *   - boxOverlay  = "gloss"
  *   - iconMode    = "icons"
@@ -67,15 +70,35 @@ export async function POST(req: NextRequest) {
 
   const { title, code, diagramType = "sequence" } = body;
 
+  // ── ONLY sequence diagrams are supported ──────────────────────────────────
+  // This app renders sequence diagrams with a custom SVG renderer.
+  // Flowcharts, architecture, class, ER, gantt, pie, mindmap, etc. are NOT supported.
+  // For mindmaps, use https://mindmaps-bheng.vercel.app/api/ai/mindmaps instead.
+  if (diagramType && diagramType !== "sequence") {
+    return NextResponse.json({
+      error: `Unsupported diagram type: "${diagramType}". This app ONLY supports sequence diagrams.`,
+      supported: "sequence",
+      rejected: diagramType,
+      hint: "For mindmaps, use POST https://mindmaps-bheng.vercel.app/api/ai/mindmaps. For other diagram types, this app is not the right tool.",
+    }, { status: 400 });
+  }
+
+  // Also reject code that isn't a sequence diagram
+  if (code?.trim() && !/sequenceDiagram/i.test(code)) {
+    return NextResponse.json({
+      error: "Only sequenceDiagram code is accepted. The code must contain 'sequenceDiagram'.",
+      hint: "Flowcharts, architecture diagrams, class diagrams, etc. are NOT supported. Only Mermaid sequenceDiagram syntax.",
+      sample_code: "---\ntitle: My Flow\n---\nsequenceDiagram\n  participant U as 🧑 User\n  participant S as ⚙️ Server\n  U->>S: Request\n  S-->>U: Response",
+    }, { status: 400 });
+  }
+
   if (!title?.trim()) return NextResponse.json({
     error: "Missing required field: title",
     instruction: "You MUST include a \"title\" field in your JSON body. The title describes what the diagram is about.",
+    supported_type: "sequence ONLY — no flowcharts, architecture, class, ER, gantt, pie, or mindmap diagrams",
     required_fields: {
       title: "string — A descriptive name for the diagram (e.g. \"User Authentication Flow\")",
-      code: "string — Valid Mermaid syntax for the diagram",
-    },
-    optional_fields: {
-      diagramType: "string — One of: sequence, flowchart, classDiagram, erDiagram, gantt, pie, mindmap, timeline, etc. Defaults to \"sequence\"",
+      code: "string — Valid Mermaid sequenceDiagram syntax ONLY",
     },
     sample_request: {
       method: "POST",
@@ -94,11 +117,7 @@ export async function POST(req: NextRequest) {
 
   if (!code?.trim()) return NextResponse.json({
     error: "Missing required field: code",
-    instruction: "You MUST include a \"code\" field containing valid Mermaid diagram syntax.",
-    required_fields: {
-      title: "string — A descriptive name for the diagram",
-      code: "string — Valid Mermaid syntax for the diagram",
-    },
+    instruction: "You MUST include a \"code\" field containing valid Mermaid sequenceDiagram syntax. No other diagram types.",
     sample_request: {
       body: {
         title: "User Authentication Flow",
