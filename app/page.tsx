@@ -1393,23 +1393,17 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
             // is_public loaded from DB response below
         }
 
-        // Always fetch diagram — auth check below decides editor vs presenter
+        // Fetch diagram — single path, no duplicate fetches
         if (urlId) {
             setDiagramLoading(true);
             fetch(`/api/diagrams/${urlId}`).then(async r => {
-                if (r.status === 403) return; // private diagram — Supabase re-fetch below handles it
+                if (r.status === 403) return; // private diagram — auth check below handles it
                 if (!r.ok) { setDiagramLoading(false); return; }
                 const d = await r.json();
                 if (d?.code) {
-                    let loadedCode = d.code;
-                    // If code lacks a title line, inject the DB title so the SVG shows it
-                    const hasTitle = /^title:?\s+.+$/im.test(loadedCode);
-                    if (!hasTitle && d.title) {
-                        loadedCode = loadedCode.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1    title: ${d.title}\n`);
-                    }
-                    setCode(loadedCode);
+                    setCode(d.code);
                     setHasFit(false);
-                    const t = loadedCode.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
+                    const t = d.code.match(/^(?:title|accTitle):?\s+(.+)$/im)?.[1]?.trim();
                     if (t) pendingTitleToastRef.current = t;
                 }
                 if (typeof d?.is_public === "boolean") setIsSharedDiagram(d.is_public);
@@ -1424,29 +1418,10 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         supabase.auth.getSession().then(({ data }) => {
             if (data.session) {
                 setSupabaseUser(data.session.user);
-                // Show pending title toast only for authenticated users (not presenter)
                 if (pendingTitleToastRef.current) {
                     const t = pendingTitleToastRef.current;
                     pendingTitleToastRef.current = null;
                     setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
-                }
-                if (urlId && process.env.NEXT_PUBLIC_LOCAL_DEV !== "true") {
-                    setDiagramLoading(true);
-                    void supabase.from("diagrams").select("code, settings, title").eq("id", urlId).single()
-                        .then(({ data: d, error }) => {
-                            if (!error && d?.code) {
-                                let loadedCode = d.code;
-                                const hasTitle = /^title:?\s+.+$/im.test(loadedCode);
-                                if (!hasTitle && d.title) {
-                                    loadedCode = loadedCode.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1    title: ${d.title}\n`);
-                                }
-                                setCode(loadedCode); setHasFit(false);
-                            }
-                            if (!error && d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
-                            if (!error && d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
-                            setDiagramLoading(false);
-                            if (!error && isImported) setTimeout(fireConfetti, 400);
-                        }).catch(() => setDiagramLoading(false));
                 }
             } else {
                 // Not authenticated — always presenter mode

@@ -80,13 +80,19 @@ export async function POST(req: NextRequest) {
     slug = `${baseSlug}-${counter++}`;
   }
 
+  // Ensure title is embedded in the code
+  let finalCode = code.trim();
+  if (!/^title:?\s+.+$/im.test(finalCode)) {
+    finalCode = finalCode.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1    title: ${title.trim()}\n`);
+  }
+
   const { data: diagram, error } = await admin
     .from("diagrams")
     .insert({
       user_id: owner.id,
       title: title.trim(),
       slug,
-      code: code.trim(),
+      code: finalCode,
       diagram_type: "sequence",
       tags: ["AI"],
       settings: { opts: { boxOverlay: "gloss", iconMode: "icons" } },
