@@ -3,12 +3,12 @@ import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, use
 import { Code2, SlidersHorizontal, X, ArrowLeft } from "lucide-react";
 import { CuteToast, showToast } from "./CuteToast";
 import { createClient } from "@/lib/supabase/client";
-import Editor from "react-simple-code-editor";
+import dynamic from "next/dynamic";
+const Editor = dynamic(() => import("react-simple-code-editor"), { ssr: false });
 import Prism from "prismjs";
-import { QRCodeSVG } from "qrcode.react";
+const QRCodeSVG = dynamic(() => import("qrcode.react").then(m => ({ default: m.QRCodeSVG })), { ssr: false });
 import DiagramsShell from "./DiagramsShell";
 import LZString from "lz-string";
-import dynamic from "next/dynamic";
 const MermaidRenderer = dynamic(() => import("./MermaidRenderer"), { ssr: false });
 
 // ── Sequence diagram Prism grammar ────────────────────────────────────────────
@@ -1451,8 +1451,16 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
 
     // ── Persist ───────────────────────────────────────────────────────────
     // code is NOT persisted to localStorage — loaded from URL or paste only
-    useEffect(() => { if (mounted) localStorage.setItem("nsd-opts", JSON.stringify(opts)); }, [opts, mounted]);
-    useEffect(() => { if (mounted) localStorage.setItem("nsd-layout", JSON.stringify(layout)); }, [layout, mounted]);
+    useEffect(() => {
+        if (!mounted) return;
+        const t = setTimeout(() => localStorage.setItem("nsd-opts", JSON.stringify(opts)), 300);
+        return () => clearTimeout(t);
+    }, [opts, mounted]);
+    useEffect(() => {
+        if (!mounted) return;
+        const t = setTimeout(() => localStorage.setItem("nsd-layout", JSON.stringify(layout)), 300);
+        return () => clearTimeout(t);
+    }, [layout, mounted]);
 
     // ── Auto layout — compute from diagram content ────────────────────────
     const computedLayout = useMemo((): Layout => {
