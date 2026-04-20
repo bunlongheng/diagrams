@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isLocal } from "@/lib/is-local";
+import db from "@/lib/db";
 
 function toSlug(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled";
@@ -75,8 +76,11 @@ export async function POST(req: NextRequest) {
   const baseSlug = toSlug(title);
   let slug = baseSlug, counter = 2;
   while (true) {
-    const { data } = await admin.from("diagrams").select("id").eq("user_id", owner.id).eq("slug", slug).limit(1);
-    if (!data || data.length === 0) break;
+    const { rows } = await db.query(
+      "SELECT id FROM diagrams WHERE user_id = $1 AND slug = $2 LIMIT 1",
+      [owner.id, slug]
+    );
+    if (rows.length === 0) break;
     slug = `${baseSlug}-${counter++}`;
   }
 
@@ -86,22 +90,14 @@ export async function POST(req: NextRequest) {
     finalCode = finalCode.replace(/^(sequenceDiagram[^\n]*\n?)/im, `$1    title: ${title.trim()}\n`);
   }
 
-  const { data: diagram, error } = await admin
-    .from("diagrams")
-    .insert({
-      user_id: owner.id,
-      title: title.trim(),
-      slug,
-      code: finalCode,
-      diagram_type: "sequence",
-      tags: ["AI"],
-      settings: { opts: { boxOverlay: "gloss", iconMode: "icons" } },
-      tokens_out: tokensOut,
-    })
-    .select()
-    .single();
+  const settings = { opts: { boxOverlay: "gloss", iconMode: "icons" } };
+  const { rows } = await db.query(
+    "INSERT INTO diagrams (user_id, title, slug, code, diagram_type, tags, settings, tokens_out) VALUES ($1, $2, $3, $4, $5, $6::text[], $7, $8) RETURNING *",
+    [owner.id, title.trim(), slug, finalCode, "sequence", ["AI"], JSON.stringify(settings), tokensOut]
+  );
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (rows.length === 0) return NextResponse.json({ error: "Insert failed" }, { status: 500 });
+  const diagram = rows[0];
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://diagrams-bheng.vercel.app";
   return NextResponse.json({ ...diagram, url: `${baseUrl}/?id=${diagram.id}` }, { status: 201 });

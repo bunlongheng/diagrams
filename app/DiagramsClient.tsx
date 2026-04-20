@@ -869,15 +869,22 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
       ? diagram.code.replace(/^((?:title|accTitle):[ \t]*)(.*)$/m, `$1${newTitle}`)
       : null;
     const codeChanged = newCode && newCode !== diagram?.code;
-    const supabase = createClient();
-    await supabase.from("diagrams").update({ title: newTitle, ...(codeChanged ? { code: newCode } : {}) }).eq("id", id);
+    await fetch(`/api/diagrams/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle, ...(codeChanged ? { code: newCode } : {}) }),
+    });
     setDiagrams(prev => prev.map(d => d.id === id ? { ...d, title: newTitle, ...(codeChanged ? { code: newCode! } : {}) } : d));
     setRenamingDiagram(null);
   }
 
   async function saveTags(id: string, tags: string[]) {
-    const { error } = await createClient().from("diagrams").update({ tags }).eq("id", id);
-    if (error) { showToast(`Failed to save tags: ${error.message}`, { color: "#ef4444" }); return; }
+    const res = await fetch(`/api/diagrams/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags }),
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); showToast(`Failed to save tags: ${e.error ?? "Unknown error"}`, { color: "#ef4444" }); return; }
     setDiagrams(prev => prev.map(d => d.id === id ? { ...d, tags } : d));
     setTaggingDiagram(null);
     showToast(tags.length ? `Tags saved: ${tags.join(", ")}` : "Tags cleared", { color: "#1c1e21" });
@@ -907,10 +914,10 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
   async function deleteDiagram(id: string) {
     setConfirmDeleteId(null);
     setDeleting(id);
-    const supabase = createClient();
-    const { error } = await supabase.from("diagrams").delete().eq("id", id);
-    if (error) {
-      showToast(`Delete failed: ${error.message}`, { color: "#ef4444" });
+    const res = await fetch(`/api/diagrams/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      showToast(`Delete failed: ${e.error ?? "Unknown error"}`, { color: "#ef4444" });
       setDeleting(null); return;
     }
     showToast("Deleted ✓", { color: "#64748b" });
