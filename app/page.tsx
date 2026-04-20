@@ -1171,10 +1171,11 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         }
         showToast(`Title saved`, { color: "#7c3aed" });
         if (savedDiagramId && supabaseUser) {
-            const supabase = createClient();
-            supabase.from("diagrams").update({ title: t, code: newCode }).eq("id", savedDiagramId).then(({ error }) => {
-                if (error) showToast(`Save failed: ${error.message}`, { color: "#ef4444" });
-            });
+            fetch(`/api/diagrams/${savedDiagramId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: t, code: newCode }),
+            }).then(r => { if (!r.ok) r.json().then(e => showToast(`Save failed: ${e.error}`, { color: "#ef4444" })).catch(() => {}); });
         }
     }, [code, savedDiagramId, supabaseUser, svgWrapRef]);
 
@@ -1627,8 +1628,11 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     const saveDiagramRef = useRef<(() => void) | null>(null);
     const saveSettings = useCallback((newOpts: Opts, newLayout: Layout) => {
         if (!savedDiagramId || !supabaseUser) return;
-        const supabase = createClient();
-        supabase.from("diagrams").update({ settings: { opts: newOpts, layout: newLayout } }).eq("id", savedDiagramId).then(() => {});
+        fetch(`/api/diagrams/${savedDiagramId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ settings: { opts: newOpts, layout: newLayout } }),
+        }).catch(() => {});
     }, [savedDiagramId, supabaseUser]);
 
     const upd = (p: Partial<Opts>) => setOpts(o => {
@@ -1697,25 +1701,20 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         const dtype = detectDiagramType(c);
         showToast("Saving…", { color: "#6366f1" });
         try {
-            const supabase = createClient();
-            // Find unique title + slug
-            const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "untitled";
-            let slug = base; let finalTitle = title; let n = 2;
-            while (true) {
-                const { data } = await supabase.from("diagrams").select("id").eq("slug", slug).limit(1);
-                if (!data || data.length === 0) break;
-                slug = `${base}-${n}`;
-                finalTitle = `${title} ${n}`;
-                n++;
-            }
-            const { data: saved, error } = await supabase.from("diagrams").insert({ user_id: supabaseUser.id, title: finalTitle, slug, code: c, diagram_type: dtype, settings: { opts, layout } }).select("id").single();
-            if (error) showToast(`Error: ${error.message}`, { color: "#ef4444" });
-            else {
+            const res = await fetch("/api/diagrams", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, code: c, diagramType: dtype }),
+            });
+            const result = await res.json();
+            if (!res.ok) {
+                showToast(`Error: ${result.error}`, { color: "#ef4444" });
+            } else {
                 showToast("Saved ✓", { color: "#16a34a" });
-                if (saved?.id) {
-                    setSavedDiagramId(saved.id);
+                if (result?.id) {
+                    setSavedDiagramId(result.id);
                     const viewParam = new URLSearchParams(window.location.search).get("view") === "1" ? "&view=1" : "";
-                    history.replaceState(null, "", `/?id=${saved.id}${viewParam}`);
+                    history.replaceState(null, "", `/?id=${result.id}${viewParam}`);
                 }
             }
         } catch (e) {
@@ -1732,9 +1731,12 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     useEffect(() => {
         if (!supabaseUser || !savedDiagramId || !code.trim()) return;
         if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-        autoSaveTimer.current = setTimeout(async () => {
-            const supabase = createClient();
-            await supabase.from("diagrams").update({ code }).eq("id", savedDiagramId);
+        autoSaveTimer.current = setTimeout(() => {
+            fetch(`/api/diagrams/${savedDiagramId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code }),
+            }).catch(() => {});
         }, 1500);
         return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
     }, [code, savedDiagramId, supabaseUser]);

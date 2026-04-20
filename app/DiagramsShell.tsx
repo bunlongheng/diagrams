@@ -20,13 +20,14 @@ export default function DiagramsShell() {
     if (!supabase) { setSessionChecked(true); return; }
     const allowed = process.env.NEXT_PUBLIC_ALLOWED_EMAIL;
 
-    async function fetchDiagrams(u: User) {
-      const { data } = await supabase
-        .from("diagrams")
-        .select("id, title, slug, diagram_type, created_at, updated_at, code, tags")
-        .eq("user_id", u.id)
-        .order("updated_at", { ascending: false });
-      if (data) setDiagrams(data);
+    async function fetchDiagrams(_u: User) {
+      try {
+        const res = await fetch("/api/diagrams");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) setDiagrams(data);
+        }
+      } catch { /* ignore fetch errors */ }
     }
 
     // Use onAuthStateChange as single source of truth.

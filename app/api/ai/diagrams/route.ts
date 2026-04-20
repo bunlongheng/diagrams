@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import db from "@/lib/db";
 
 const AI_SECRET = process.env.AI_API_SECRET;
 
@@ -71,9 +72,6 @@ export async function POST(req: NextRequest) {
   const { title, code, diagramType = "sequence" } = body;
 
   // ── ONLY sequence diagrams are supported ──────────────────────────────────
-  // This app renders sequence diagrams with a custom SVG renderer.
-  // Flowcharts, architecture, class, ER, gantt, pie, mindmap, etc. are NOT supported.
-  // For mindmaps, use https://mindmaps-bheng.vercel.app/api/ai/mindmaps instead.
   if (diagramType && diagramType !== "sequence") {
     return NextResponse.json({
       error: `Unsupported diagram type: "${diagramType}". This app ONLY supports sequence diagrams.`,
@@ -143,8 +141,11 @@ export async function POST(req: NextRequest) {
   let slug = baseSlug;
   let counter = 2;
   while (true) {
-    const { data } = await admin.from("diagrams").select("id").eq("user_id", owner.id).eq("slug", slug).limit(1);
-    if (!data || data.length === 0) break;
+    const { rows } = await db.query(
+      "SELECT id FROM diagrams WHERE user_id = $1 AND slug = $2 LIMIT 1",
+      [owner.id, slug]
+    );
+    if (rows.length === 0) break;
     slug = `${baseSlug}-${counter++}`;
   }
 
@@ -165,22 +166,13 @@ export async function POST(req: NextRequest) {
     },
   };
 
-  const { data: diagram, error } = await admin
-    .from("diagrams")
-    .insert({
-      user_id: owner.id,
-      title: title.trim(),
-      slug,
-      code: finalCode,
-      diagram_type: diagramType,
+  const { rows } = await db.query(
+    "INSERT INTO diagrams (user_id, title, slug, code, diagram_type, tags, settings) VALUES ($1, $2, $3, $4, $5, $6::text[], $7) RETURNING *",
+    [owner.id, title.trim(), slug, finalCode, diagramType, ["API"], JSON.stringify(settings)]
+  );
 
-      tags: ["API"],
-      settings,
-    })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (rows.length === 0) return NextResponse.json({ error: "Insert failed" }, { status: 500 });
+  const diagram = rows[0];
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://diagrams-bheng.vercel.app";
   return NextResponse.json(
