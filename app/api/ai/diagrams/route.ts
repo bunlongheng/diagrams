@@ -35,6 +35,16 @@ function toSlug(title: string): string {
  *   { "id": "…", "url": "https://diagrams-bheng.vercel.app/?id=…", … }
  */
 export async function POST(req: NextRequest) {
+  try {
+  return await postHandler(req);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[ai/diagrams] unhandled error:", msg);
+    return NextResponse.json({ error: "Internal error", detail: msg }, { status: 500 });
+  }
+}
+
+async function postHandler(req: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   if (!AI_SECRET) {
     return NextResponse.json({ error: "AI_API_SECRET not configured" }, { status: 500 });
