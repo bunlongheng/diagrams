@@ -125,16 +125,22 @@ export async function POST(req: NextRequest) {
     },
   }, { status: 400 });
 
-  // ── Resolve owner user_id from ALLOWED_EMAIL ──────────────────────────────
-  const ownerEmail = process.env.ALLOWED_EMAIL;
-  if (!ownerEmail) {
-    return NextResponse.json({ error: "ALLOWED_EMAIL not configured" }, { status: 500 });
+  // ── Resolve owner user_id ──────────────────────────────────────────────────
+  // OWNER_USER_ID env var bypasses Supabase admin lookup (required for local dev
+  // since undici inside Next.js 15 ignores NODE_TLS_REJECT_UNAUTHORIZED=0)
+  let ownerId = process.env.OWNER_USER_ID ?? null;
+  if (!ownerId) {
+    const ownerEmail = process.env.ALLOWED_EMAIL;
+    if (!ownerEmail) {
+      return NextResponse.json({ error: "OWNER_USER_ID or ALLOWED_EMAIL not configured" }, { status: 500 });
+    }
+    const admin = createAdminClient();
+    const { data: users, error: userErr } = await admin.auth.admin.listUsers();
+    if (userErr) return NextResponse.json({ error: userErr.message }, { status: 500 });
+    const owner = users.users.find(u => u.email === ownerEmail);
+    if (!owner) return NextResponse.json({ error: "Owner not found" }, { status: 500 });
+    ownerId = owner.id;
   }
-  const admin = createAdminClient();
-  const { data: users, error: userErr } = await admin.auth.admin.listUsers();
-  if (userErr) return NextResponse.json({ error: userErr.message }, { status: 500 });
-  const owner = users.users.find(u => u.email === ownerEmail);
-  if (!owner) return NextResponse.json({ error: "Owner not found" }, { status: 500 });
 
   // ── Unique slug ───────────────────────────────────────────────────────────
   const baseSlug = toSlug(title);
@@ -143,7 +149,7 @@ export async function POST(req: NextRequest) {
   while (true) {
     const { rows } = await db.query(
       "SELECT id FROM diagrams WHERE user_id = $1 AND slug = $2 LIMIT 1",
-      [owner.id, slug]
+      [ownerId, slug]
     );
     if (rows.length === 0) break;
     slug = `${baseSlug}-${counter++}`;
@@ -168,7 +174,7 @@ export async function POST(req: NextRequest) {
 
   const { rows } = await db.query(
     "INSERT INTO diagrams (user_id, title, slug, code, diagram_type, tags, settings) VALUES ($1, $2, $3, $4, $5, $6::text[], $7) RETURNING *",
-    [owner.id, title.trim(), slug, finalCode, diagramType, ["API"], JSON.stringify(settings)]
+    [ownerId, title.trim(), slug, finalCode, diagramType, ["API"], JSON.stringify(settings)]
   );
 
   if (rows.length === 0) return NextResponse.json({ error: "Insert failed" }, { status: 500 });
