@@ -24,6 +24,9 @@ export async function GET(req: NextRequest) {
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing ?id= parameter" }, { status: 400, headers: CORS });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return NextResponse.json({ error: "Invalid diagram ID" }, { status: 400, headers: CORS });
+  }
 
   const { rows } = await db.query("SELECT code, settings, title FROM diagrams WHERE id = $1", [id]);
   if (!rows.length) return NextResponse.json({ error: "Diagram not found" }, { status: 404, headers: CORS });
