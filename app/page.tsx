@@ -1749,8 +1749,9 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
     }, [code, savedDiagramId, supabaseUser]);
 
+    const PROD_URL = "https://diagrams-bheng.vercel.app";
     const buildShareUrl = useCallback(() => {
-        if (savedDiagramId) return `${window.location.origin}/d/${savedDiagramId}`;
+        if (savedDiagramId) return `${PROD_URL}/d/${savedDiagramId}`;
         return null; // not saved yet
     }, [savedDiagramId]);
 
@@ -2312,7 +2313,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                         <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
                             <button onClick={async () => {
                                 if (isSharedDiagram) {
-                                    const url = `${window.location.origin}/d/${savedDiagramId}`;
+                                    const url = `${PROD_URL}/d/${savedDiagramId}`;
                                     navigator.clipboard.writeText(url).catch(() => {});
                                     window.open(url, "_blank");
                                     showToast("Link copied — opening preview", { color: "#7c3aed" });
@@ -2320,7 +2321,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                                     const { data: { session } } = await createClient().auth.getSession();
                                     await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ is_public: true }) });
                                     setIsSharedDiagram(true);
-                                    const url = `${window.location.origin}/d/${savedDiagramId}`;
+                                    const url = `${PROD_URL}/d/${savedDiagramId}`;
                                     navigator.clipboard.writeText(url).catch(() => {});
                                     showToast("Public link copied!", { color: "#7c3aed" });
                                 }
