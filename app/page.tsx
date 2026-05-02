@@ -693,13 +693,13 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid,
+    upd, updL, exportPng, exportPdf, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
     mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string | null;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
-    exportPng: () => void; exportCode: () => void; exportJson: () => void;
+    exportPng: () => void; exportPdf: () => void; exportCode: () => void; exportJson: () => void;
     copyCode: () => void; copyLink: () => void; share: () => void;
     tab: "general" | "components" | "share"; setTab: (t: "general" | "components" | "share") => void;
     selectedPid?: string | null;
@@ -825,16 +825,16 @@ function SettingsContent({
                             style={{ background: "#FF6188", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
                             PNG
                         </button>
-                        <button onClick={exportCode}
+                        <button onClick={exportPdf}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "#FC9867", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
-                            Code
+                            PDF
                         </button>
                         {/* Row 2 */}
-                        <button onClick={copyLink}
+                        <button onClick={exportCode}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: copiedLink ? "#A9DC76" : "#FFD866", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
-                            {copiedLink ? "Copied!" : "Link"}
+                            style={{ background: "#FFD866", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
+                            Code
                         </button>
                         <button onClick={exportJson}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
@@ -842,15 +842,15 @@ function SettingsContent({
                             JSON
                         </button>
                         {/* Row 3 */}
+                        <button onClick={copyLink}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: copiedLink ? "#A9DC76" : "#78DCE8", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
+                            {copiedLink ? "Copied!" : "Link"}
+                        </button>
                         <button onClick={share}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: copiedShare ? "#A9DC76" : "#78DCE8", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
+                            style={{ background: copiedShare ? "#A9DC76" : "#AB9DF2", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
                             {copiedShare ? "Shared!" : "Share"}
-                        </button>
-                        <button onClick={copyCode}
-                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: copied ? "#A9DC76" : "#AB9DF2", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
-                            {copied ? "Copied!" : "Copy"}
                         </button>
                     </div>
                 </div>
@@ -1697,6 +1697,11 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         a.href = URL.createObjectURL(new Blob([JSON.stringify(diagram, null, 2)], { type: "application/json" }));
         a.download = exportFilename("json"); a.click();
     }, [diagram]);
+
+    const exportPdf = useCallback(() => {
+        if (!savedDiagramId) { showToast("Save the diagram first", { color: "#f59e0b" }); return; }
+        window.open(`${PROD_URL}/pdf/${savedDiagramId}`, "_blank");
+    }, [savedDiagramId]);
 
     const copyCode = useCallback(() => {
         navigator.clipboard.writeText(code).then(() => {
@@ -2560,7 +2565,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "12px 12px" }}>
                             <SettingsContent opts={opts} layout={computedLayout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
                         </div>
                     </div>
                 )}
@@ -2636,7 +2641,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
                         </div>
                     </div>
                 </div>
