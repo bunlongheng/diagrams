@@ -795,9 +795,13 @@ function SettingsContent({
             </>}
 
             {tab === "share" && <>
-                {/* QR code → read-only view */}
+                {/* QR code → click to copy prod link */}
                 {viewUrl && <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                    <div style={{ background: "#ffffff", borderRadius: 12, padding: 10, display: "inline-flex" }}>
+                    <div
+                        onClick={() => { navigator.clipboard.writeText(viewUrl).catch(() => {}); showToast("Link copied!", { color: "#7c3aed" }); }}
+                        style={{ background: "#ffffff", borderRadius: 12, padding: 10, display: "inline-flex", cursor: "pointer" }}
+                        title="Click to copy link"
+                    >
                         {viewUrl.length > 2000
                             ? <div style={{ width: 160, height: 160, borderRadius: 8, background: "repeating-linear-gradient(45deg,#e2e8f0 0,#e2e8f0 4px,#f8fafc 4px,#f8fafc 12px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <span style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "0 12px", lineHeight: 1.4 }}>Diagram too large for QR</span>
@@ -806,7 +810,7 @@ function SettingsContent({
                         }
                     </div>
                     <p style={{ fontSize: fs(10), color: ut.sectionLabel, textAlign: "center", margin: 0, lineHeight: 1.5 }}>
-                        Scan to open read-only canvas
+                        Click to copy · scan to download SVG
                     </p>
                 </div>}
 
@@ -1757,10 +1761,8 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
 
     const buildViewUrl = useCallback(() => {
         if (!savedDiagramId) return null;
-        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-        const base = isLocal && lanIp ? `http://${lanIp}:${window.location.port}` : window.location.origin;
-        return `${base}/d/${savedDiagramId}`;
-    }, [savedDiagramId, lanIp]);
+        return `${PROD_URL}/d/${savedDiagramId}`;
+    }, [savedDiagramId]);
 
     const copyLink = useCallback(() => {
         const url = buildShareUrl();
