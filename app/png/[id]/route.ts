@@ -29,11 +29,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const diagram = parse(code);
   let svg = buildSvg(diagram, opts, layout, created_at);
 
-  // Strip emoji that sharp/librsvg can't render
+  // Fix SVG for sharp/librsvg compatibility
   svg = svg.replace(/>([^<]*)<\/text>/g, (_, text) => {
     const cleaned = text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}]/gu, "").trim();
     return `>${cleaned}</text>`;
   });
+  svg = svg.replace(/font-family="'[^']+',\s*sans-serif"/g, 'font-family="Arial, Helvetica, sans-serif"');
+  svg = svg.replace(/dominant-baseline="middle"/g, 'dy="0.35em"');
 
   const wMatch = svg.match(/width="(\d+(?:\.\d+)?)"/);
   const hMatch = svg.match(/height="(\d+(?:\.\d+)?)"/);

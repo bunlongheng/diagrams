@@ -30,12 +30,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const diagram = parse(code);
   let svg = buildSvg(diagram, opts, layout, created_at);
 
-  // Strip any remaining emoji <text> elements that librsvg can't render
-  // Replace emoji characters with empty string inside text elements
-  svg = svg.replace(/>([^<]*)<\/text>/g, (match, text) => {
+  // Fix SVG for sharp/librsvg compatibility:
+  // 1. Strip emoji (librsvg can't render them)
+  svg = svg.replace(/>([^<]*)<\/text>/g, (_, text) => {
     const cleaned = text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}]/gu, "").trim();
     return `>${cleaned}</text>`;
   });
+  // 2. Replace custom fonts with system fonts (librsvg doesn't load web fonts)
+  svg = svg.replace(/font-family="'[^']+',\s*sans-serif"/g, 'font-family="Arial, Helvetica, sans-serif"');
+  // 3. Replace dominant-baseline (not supported by librsvg) with dy offset
+  svg = svg.replace(/dominant-baseline="middle"/g, 'dy="0.35em"');
 
   // Extract SVG dimensions
   const wMatch = svg.match(/width="(\d+(?:\.\d+)?)"/);
