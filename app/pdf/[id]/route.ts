@@ -2,11 +2,44 @@ import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { parse, buildSvg, DEFAULT_OPTS, DEFAULT_LAYOUT } from "@/lib/svg-renderer";
 import type { Opts, Layout } from "@/lib/svg-renderer";
+import sharp from "sharp";
 
 export const dynamic = "force-dynamic";
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "diagram";
+}
+
+/** Build a minimal single-page PDF containing one PNG image */
+function buildPdf(png: Buffer, imgW: number, imgH: number): Buffer {
+  const margin = 36; // 0.5 inch
+  const pageW = imgW + margin * 2;
+  const pageH = imgH + margin * 2;
+
+  // PDF objects
+  const objs: string[] = [];
+  const push = (s: string) => { objs.push(s); return objs.length; };
+
+  push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj");
+  push(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`);
+  push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>\nendobj`);
+
+  // Image XObject
+  const imgObj = `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${png.length} >>\nstream\n`;
+  // We'll use raw PNG data via DCTDecode... actually let's use the simpler approach:
+  // Embed as a full PNG with SMask for alpha
+
+  // Actually, let's just build proper PDF with inline image stream
+  // Use FlateDecode with the raw pixel data from sharp
+
+  // Simpler: get raw RGB pixels from sharp, deflate them
+  // But that's complex. Let me use an even simpler approach:
+  // Wrap the PNG in a minimal PDF using the approach where we reference
+  // the image data directly.
+
+  // The simplest working approach: build PDF manually with raw JPEG
+  // sharp can output JPEG which PDF natively supports via DCTDecode
+  return Buffer.alloc(0); // placeholder - we'll use the async version below
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,13 +59,104 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const diagram = parse(code);
   const svg = buildSvg(diagram, opts, layout);
-  const filename = `${toSlug(title || "diagram")}.svg`;
 
-  // Download as SVG file — small, HD, vector, ready for PPT/Keynote
-  return new Response(svg, {
+  // Extract SVG dimensions
+  const wMatch = svg.match(/width="(\d+(?:\.\d+)?)"/);
+  const hMatch = svg.match(/height="(\d+(?:\.\d+)?)"/);
+  const svgW = Math.round(wMatch ? parseFloat(wMatch[1]) : 800);
+  const svgH = Math.round(hMatch ? parseFloat(hMatch[1]) : 600);
+
+  // Render SVG → JPEG at 2x for HD quality
+  const scale = 2;
+  const jpegBuf = await sharp(Buffer.from(svg))
+    .resize(svgW * scale, svgH * scale)
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .jpeg({ quality: 95 })
+    .toBuffer();
+
+  const imgW = svgW * scale;
+  const imgH = svgH * scale;
+
+  // Build a minimal valid PDF with the JPEG embedded
+  // PDF coordinate system: 1 point = 1/72 inch
+  // We'll size the page to fit the image at 150 DPI (so it prints well)
+  const dpi = 150;
+  const pageW = Math.round(imgW / dpi * 72);
+  const pageH = Math.round(imgH / dpi * 72);
+
+  const imgStream = jpegBuf;
+  const imgLen = imgStream.length;
+
+  // Build PDF byte by byte
+  const lines: (string | Buffer)[] = [];
+  const offsets: number[] = [];
+  let pos = 0;
+
+  const addLine = (s: string) => { lines.push(s + "\n"); pos += s.length + 1; };
+  const addBuf = (b: Buffer) => { lines.push(b); pos += b.length; };
+  const markObj = () => { offsets.push(pos); };
+
+  addLine("%PDF-1.4");
+
+  // Object 1: Catalog
+  markObj();
+  addLine("1 0 obj");
+  addLine("<< /Type /Catalog /Pages 2 0 R >>");
+  addLine("endobj");
+
+  // Object 2: Pages
+  markObj();
+  addLine("2 0 obj");
+  addLine(`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`);
+  addLine("endobj");
+
+  // Object 3: Page
+  markObj();
+  addLine("3 0 obj");
+  addLine(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>`);
+  addLine("endobj");
+
+  // Object 4: Image XObject (JPEG)
+  markObj();
+  addLine("4 0 obj");
+  addLine(`<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgLen} >>`);
+  addLine("stream");
+  addBuf(imgStream);
+  addLine("\nendstream");
+  addLine("endobj");
+
+  // Object 5: Page contents (draw image scaled to page)
+  const contentStream = `q ${pageW} 0 0 ${pageH} 0 0 cm /Img Do Q`;
+  markObj();
+  addLine("5 0 obj");
+  addLine(`<< /Length ${contentStream.length} >>`);
+  addLine("stream");
+  addLine(contentStream);
+  addLine("endstream");
+  addLine("endobj");
+
+  // Cross-reference table
+  const xrefPos = pos;
+  addLine("xref");
+  addLine(`0 ${offsets.length + 1}`);
+  addLine("0000000000 65535 f ");
+  for (const off of offsets) {
+    addLine(String(off).padStart(10, "0") + " 00000 n ");
+  }
+
+  addLine("trailer");
+  addLine(`<< /Size ${offsets.length + 1} /Root 1 0 R >>`);
+  addLine("startxref");
+  addLine(String(xrefPos));
+  addLine("%%EOF");
+
+  const pdfBuf = Buffer.concat(lines.map(l => typeof l === "string" ? Buffer.from(l) : l));
+  const filename = `${toSlug(title || "diagram")}.pdf`;
+
+  return new Response(pdfBuf, {
     headers: {
-      "Content-Type": "image/svg+xml",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "public, max-age=60",
     },
   });
