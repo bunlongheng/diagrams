@@ -179,7 +179,7 @@ const THEMES: Record<string, { bg: string; titleFill: string; boxStroke: string;
 };
 
 // This is the full buildSvg — identical to page.tsx but importable server-side
-function buildSvg(d: Diagram, o: Opts, l: Layout): string {
+function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): string {
     const { participants: ps_raw, messages: ms } = d;
     if (!ps_raw.length) return "";
     const ps = ps_raw.map(p => o.labelOverrides?.[p.id] ? { ...p, label: o.labelOverrides[p.id] } : p);
@@ -276,7 +276,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const defs: string[] = [];
     parts.push(`<rect width="${W}" height="${H}" fill="${th.bg}"/>`);
     const titleY = TOP_PAD + TITLE_H / 2 + 1;
-    const now = new Date();
+    const now = createdAt ? new Date(createdAt) : new Date();
     const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     const isDark = o.theme !== "light";

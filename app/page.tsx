@@ -309,7 +309,7 @@ const UI_THEMES: Record<string, UiTheme> = {
     },
 };
 
-function buildSvg(d: Diagram, o: Opts, l: Layout): string {
+function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): string {
     const { participants: ps_raw, messages: ms } = d;
     if (!ps_raw.length) return "";
     // Apply label overrides
@@ -420,7 +420,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout): string {
     const defs: string[] = [];
     parts.push(`<rect width="${W}" height="${H}" fill="${th.bg}"/>`);
     const titleY = TOP_PAD + TITLE_H / 2 + 1;
-    const now = new Date();
+    const now = createdAt ? new Date(createdAt) : new Date();
     const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     const isDark = o.theme !== "light";
@@ -1119,6 +1119,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     const [viewMode, setViewMode] = useState(false);
     const [lanIp, setLanIp] = useState<string | null>(null);
     const [savedDiagramId, setSavedDiagramId] = useState<string | null>(null);
+    const [diagramCreatedAt, setDiagramCreatedAt] = useState<string | null>(null);
     const [isSharedDiagram, setIsSharedDiagram] = useState(false);
     const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
 
@@ -1412,6 +1413,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                     if (t) pendingTitleToastRef.current = t;
                 }
                 if (typeof d?.is_public === "boolean") setIsSharedDiagram(d.is_public);
+                if (d?.created_at) setDiagramCreatedAt(d.created_at);
                 if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
                 if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
                 setDiagramLoading(false);
@@ -1499,7 +1501,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         return { textSize: FS, boxWidth, spacing, stepHeight, vPad, margin };
     }, [opts.autoLayout, opts.iconMode, diagram, layout]);
 
-    const svg = useMemo(() => buildSvg(diagram, opts, computedLayout), [diagram, opts, computedLayout]);
+    const svg = useMemo(() => buildSvg(diagram, opts, computedLayout, diagramCreatedAt ?? undefined), [diagram, opts, computedLayout, diagramCreatedAt]);
 
     const activeSvg = svg;
 

@@ -17,19 +17,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
-  const { rows } = await db.query("SELECT code, settings, title FROM diagrams WHERE id = $1", [id]);
+  const { rows } = await db.query("SELECT code, settings, title, created_at FROM diagrams WHERE id = $1", [id]);
   if (!rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { code, settings, title } = rows[0];
+  const { code, settings, title, created_at } = rows[0];
   if (!code?.trim()) return NextResponse.json({ error: "No code" }, { status: 400 });
 
   const opts: Opts = { ...DEFAULT_OPTS, ...(settings?.opts ?? {}) };
   const layout: Layout = { ...DEFAULT_LAYOUT, ...(settings?.layout ?? {}) };
 
-  // Force icons mode for PDF — emoji text doesn't render in sharp/librsvg
   opts.iconMode = "icons";
   const diagram = parse(code);
-  let svg = buildSvg(diagram, opts, layout);
+  let svg = buildSvg(diagram, opts, layout, created_at);
 
   // Strip any remaining emoji <text> elements that librsvg can't render
   // Replace emoji characters with empty string inside text elements

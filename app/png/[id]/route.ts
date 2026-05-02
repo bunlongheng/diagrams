@@ -16,10 +16,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
-  const { rows } = await db.query("SELECT code, settings, title FROM diagrams WHERE id = $1", [id]);
+  const { rows } = await db.query("SELECT code, settings, title, created_at FROM diagrams WHERE id = $1", [id]);
   if (!rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { code, settings, title } = rows[0];
+  const { code, settings, title, created_at } = rows[0];
   if (!code?.trim()) return NextResponse.json({ error: "No code" }, { status: 400 });
 
   const opts: Opts = { ...DEFAULT_OPTS, ...(settings?.opts ?? {}) };
@@ -27,7 +27,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   opts.iconMode = "icons";
 
   const diagram = parse(code);
-  let svg = buildSvg(diagram, opts, layout);
+  let svg = buildSvg(diagram, opts, layout, created_at);
 
   // Strip emoji that sharp/librsvg can't render
   svg = svg.replace(/>([^<]*)<\/text>/g, (_, text) => {
