@@ -100,5 +100,5 @@ export async function POST(req: NextRequest) {
   const diagram = rows[0];
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://diagrams-bheng.vercel.app";
-  return NextResponse.json({ ...diagram, url: `${baseUrl}/d/${diagram.id}`, editor: `${baseUrl}/?id=${diagram.id}` }, { status: 201 });
+  return NextResponse.json({ ...diagram, url: `${baseUrl}/d/${diagram.id}`, pdf: `${baseUrl}/pdf/${diagram.id}`, png: `${baseUrl}/png/${diagram.id}`, editor: `${baseUrl}/?id=${diagram.id}` }, { status: 201 });
 }
