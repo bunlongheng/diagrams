@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 <html><head>
 <meta charset="UTF-8">
 <title>Generating PDF...</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"><\/script>
+<script id="jspdf-script" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"><\/script>
 <style>
   body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f8fafc; font-family: system-ui; color: #64748b; }
   .msg { text-align: center; }
@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   <div id="status">Generating PDF...</div>
 </div>
 <script>
-(async () => {
+document.getElementById('jspdf-script').addEventListener('load', async () => {
   const status = document.getElementById('status');
   try {
     // 1. Fetch SVG
@@ -94,7 +94,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   } catch (e) {
     status.textContent = 'Error: ' + e.message;
   }
-})();
+});
 <\/script>
 </body></html>`;
 
