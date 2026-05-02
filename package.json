@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
-    "@resvg/resvg-js": "^2.6.2",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.2",
     "@types/prismjs": "^1.26.6",
@@ -22,14 +21,12 @@
     "lz-string": "^1.5.0",
     "mermaid": "^11.13.0",
     "next": "^15.1.0",
-    "pdfkit": "^0.18.0",
     "pg": "^8.20.0",
     "prismjs": "^1.30.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-simple-code-editor": "^0.14.1",
-    "svg-to-pdfkit": "^0.1.8"
+    "react-simple-code-editor": "^0.14.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
