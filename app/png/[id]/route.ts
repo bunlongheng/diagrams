@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { parse, buildSvg, DEFAULT_OPTS, DEFAULT_LAYOUT } from "@/lib/svg-renderer";
 import type { Opts, Layout } from "@/lib/svg-renderer";
+import { FONT_STYLE } from "@/lib/fonts";
 import sharp from "sharp";
 
 export const dynamic = "force-dynamic";
@@ -29,13 +30,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const diagram = parse(code);
   let svg = buildSvg(diagram, opts, layout, created_at);
 
-  // Fix SVG for sharp/librsvg compatibility
+  // Fix SVG for sharp/librsvg
   svg = svg.replace(/>([^<]*)<\/text>/g, (_, text) => {
     const cleaned = text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}]/gu, "").trim();
     return `>${cleaned}</text>`;
   });
-  svg = svg.replace(/font-family="'[^']+',\s*sans-serif"/g, 'font-family="Arial, Helvetica, sans-serif"');
-  svg = svg.replace(/dominant-baseline="middle"/g, 'dy="0.35em"');
+  // Embed Roboto font directly in SVG
+  svg = svg.replace(/<svg([^>]*)>/, `<svg$1><defs><style>${FONT_STYLE}</style></defs>`);
 
   const wMatch = svg.match(/width="(\d+(?:\.\d+)?)"/);
   const hMatch = svg.match(/height="(\d+(?:\.\d+)?)"/);
