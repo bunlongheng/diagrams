@@ -134,7 +134,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return new Response(pdfBuf, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "public, max-age=60",
     },
   });
