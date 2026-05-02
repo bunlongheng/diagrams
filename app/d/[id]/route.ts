@@ -5,10 +5,6 @@ import type { Opts, Layout } from "@/lib/svg-renderer";
 
 export const dynamic = "force-dynamic";
 
-function toSlug(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "diagram";
-}
-
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
@@ -26,13 +22,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const diagram = parse(code);
   const svg = buildSvg(diagram, opts, layout);
-  const filename = `${toSlug(title || "diagram")}.svg`;
 
-  // Return SVG as a downloadable file — small, HD, vector
+  // Serve SVG inline — browser renders it directly, user can Cmd+P to PDF
+  // Content-Disposition: inline means browser shows it, not downloads
   return new Response(svg, {
     headers: {
       "Content-Type": "image/svg+xml",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": "inline",
       "Cache-Control": "public, max-age=60",
     },
   });
