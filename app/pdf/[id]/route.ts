@@ -45,7 +45,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const svgH = Math.round(hMatch ? parseFloat(hMatch[1]) : 600);
 
   // Render SVG → JPEG at 2x for HD quality
-  const scale = 2;
+  const scale = 4;
   const jpegBuf = await sharp(Buffer.from(svg))
     .resize(svgW * scale, svgH * scale)
     .flatten({ background: { r: 255, g: 255, b: 255 } })

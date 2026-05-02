@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const svgW = Math.round(wMatch ? parseFloat(wMatch[1]) : 800);
   const svgH = Math.round(hMatch ? parseFloat(hMatch[1]) : 600);
 
-  const scale = 2;
+  const scale = 4;
   const pngBuf = await sharp(Buffer.from(svg))
     .resize(svgW * scale, svgH * scale)
     .flatten({ background: { r: 255, g: 255, b: 255 } })
