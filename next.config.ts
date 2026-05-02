@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typescript: { ignoreBuildErrors: true },
   productionBrowserSourceMaps: false,
+  serverExternalPackages: ["@resvg/resvg-js", "sharp"],
 };
 
 export default nextConfig;

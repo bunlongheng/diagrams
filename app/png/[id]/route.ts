@@ -2,14 +2,19 @@ import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { parse, buildSvg, DEFAULT_OPTS, DEFAULT_LAYOUT } from "@/lib/svg-renderer";
 import type { Opts, Layout } from "@/lib/svg-renderer";
-import { FONT_STYLE } from "@/lib/fonts";
-import sharp from "sharp";
+import { Resvg } from "@resvg/resvg-js";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export const dynamic = "force-dynamic";
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "diagram";
 }
+
+// Load Roboto font for resvg (only once)
+let fontData: Buffer | null = null;
+try { fontData = readFileSync(join(process.cwd(), "public", "fonts", "Roboto-Regular.ttf")); } catch {}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,26 +35,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const diagram = parse(code);
   let svg = buildSvg(diagram, opts, layout, created_at);
 
-  // Fix SVG for sharp/librsvg
+  // Strip emoji
   svg = svg.replace(/>([^<]*)<\/text>/g, (_, text) => {
     const cleaned = text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}]/gu, "").trim();
     return `>${cleaned}</text>`;
   });
-  // Embed Roboto font directly in SVG
-  svg = svg.replace(/<svg([^>]*)>/, `<svg$1><defs><style>${FONT_STYLE}</style></defs>`);
 
-  const wMatch = svg.match(/width="(\d+(?:\.\d+)?)"/);
-  const hMatch = svg.match(/height="(\d+(?:\.\d+)?)"/);
-  const svgW = Math.round(wMatch ? parseFloat(wMatch[1]) : 800);
-  const svgH = Math.round(hMatch ? parseFloat(hMatch[1]) : 600);
+  const fontOptions: Record<string, unknown> = {
+    loadSystemFonts: true,
+    defaultFontFamily: "Arial",
+  };
+  if (fontData) {
+    fontOptions.fontBuffers = [fontData];
+  }
 
-  const scale = 4;
-  const pngBuf = await sharp(Buffer.from(svg))
-    .resize(svgW * scale, svgH * scale)
-    .flatten({ background: { r: 255, g: 255, b: 255 } })
-    .png()
-    .toBuffer();
-
+  const resvg = new Resvg(svg, {
+    font: fontOptions,
+    fitTo: { mode: "zoom" as const, value: 4 },
+  });
+  const pngBuf = Buffer.from(resvg.render().asPng());
   const filename = `${toSlug(title || "diagram")}.png`;
 
   return new Response(pngBuf, {
