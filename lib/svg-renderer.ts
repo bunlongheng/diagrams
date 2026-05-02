@@ -383,8 +383,10 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
             }
         }
         if (o.coloredNumbers) {
-            parts.push(`<circle cx="${fx}" cy="${y}" r="10" fill="${fpColor}" stroke="${fpColor}" stroke-width="2"/>`);
-            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${th.labelFill}">${msg.displayStep ?? msg.step}</text>`);
+            const stepNum = msg.displayStep ?? msg.step;
+            const cr = stepNum >= 10 ? 14 : 10;
+            parts.push(`<circle cx="${fx}" cy="${y}" r="${cr}" fill="${fpColor}" stroke="${fpColor}" stroke-width="2"/>`);
+            parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${th.labelFill}">${stepNum}</text>`);
         }
     });
     ps.forEach((p, i) => renderBox(p, i, lb));
