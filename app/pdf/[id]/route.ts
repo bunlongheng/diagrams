@@ -10,37 +10,6 @@ function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "diagram";
 }
 
-/** Build a minimal single-page PDF containing one PNG image */
-function buildPdf(png: Buffer, imgW: number, imgH: number): Buffer {
-  const margin = 36; // 0.5 inch
-  const pageW = imgW + margin * 2;
-  const pageH = imgH + margin * 2;
-
-  // PDF objects
-  const objs: string[] = [];
-  const push = (s: string) => { objs.push(s); return objs.length; };
-
-  push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj");
-  push(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`);
-  push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>\nendobj`);
-
-  // Image XObject
-  const imgObj = `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${png.length} >>\nstream\n`;
-  // We'll use raw PNG data via DCTDecode... actually let's use the simpler approach:
-  // Embed as a full PNG with SMask for alpha
-
-  // Actually, let's just build proper PDF with inline image stream
-  // Use FlateDecode with the raw pixel data from sharp
-
-  // Simpler: get raw RGB pixels from sharp, deflate them
-  // But that's complex. Let me use an even simpler approach:
-  // Wrap the PNG in a minimal PDF using the approach where we reference
-  // the image data directly.
-
-  // The simplest working approach: build PDF manually with raw JPEG
-  // sharp can output JPEG which PDF natively supports via DCTDecode
-  return Buffer.alloc(0); // placeholder - we'll use the async version below
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -57,8 +26,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const opts: Opts = { ...DEFAULT_OPTS, ...(settings?.opts ?? {}) };
   const layout: Layout = { ...DEFAULT_LAYOUT, ...(settings?.layout ?? {}) };
 
+  // Force icons mode for PDF — emoji text doesn't render in sharp/librsvg
+  opts.iconMode = "icons";
   const diagram = parse(code);
-  const svg = buildSvg(diagram, opts, layout);
+  let svg = buildSvg(diagram, opts, layout);
+
+  // Strip any remaining emoji <text> elements that librsvg can't render
+  // Replace emoji characters with empty string inside text elements
+  svg = svg.replace(/>([^<]*)<\/text>/g, (match, text) => {
+    const cleaned = text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}]/gu, "").trim();
+    return `>${cleaned}</text>`;
+  });
 
   // Extract SVG dimensions
   const wMatch = svg.match(/width="(\d+(?:\.\d+)?)"/);
