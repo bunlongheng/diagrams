@@ -66,7 +66,7 @@ const ICON_NODES: Record<string, INode[]> = {
     "credit-card":[["rect",{width:20,height:14,x:2,y:5,rx:2}],["path",{d:"M2 10h20"}]],
     smartphone:   [["rect",{width:14,height:20,x:5,y:2,rx:2}],["path",{d:"M12 18h.01"}]],
     rocket:       [["path",{d:"M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"}],["path",{d:"M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"}],["path",{d:"M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"}]],
-    "test-tube":  [["path",{d:"M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5c-1.4 0-2.5-1.1-2.5-2.5V2"}],["path",{d:"M8.5 2h7"}],["path",{d:"M14.5 16h-5"}]],
+    "shield-check":[["path",{d:"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"}],["path",{d:"m9 12 2 2 4-4"}]],
     package:      [["path",{d:"M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"}],["path",{d:"M12 22V12"}],["path",{d:"M3.29 7 12 12 20.71 7"}]],
 };
 const ICON_KEYS = Object.keys(ICON_NODES);
@@ -94,7 +94,7 @@ function guessIconKey(s: string): string {
     if (/pay|stripe|billing|invoice|wallet/.test(l))                        return "credit-card";
     if (/mobile|app|ios|android|phone/.test(l))                             return "smartphone";
     if (/ci|cd|pipeline|build|vercel|netlify|action/.test(l))               return "rocket";
-    if (/test|spec|qa|lint|check/.test(l))                                  return "test-tube";
+    if (/test|spec|qa|lint|check|e2e|cypress|playwright/.test(l))             return "shield-check";
     if (/notification|alert|notify|push/.test(l))                           return "bell";
     return "package";
 }
