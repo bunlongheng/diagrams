@@ -277,7 +277,7 @@ const UI_THEMES: Record<string, UiTheme> = {
         panelBg:   "#f1f5f9",  panelBorder:  "#e2e8f0",
         tabBarBg:  "#e2e8f0",  activeTab:    "#ffffff",   activeTabText: "#1e293b", inactiveTabText: "#94a3b8",
         sectionLabel: "#94a3b8", bodyText:   "#334155",   divider: "#e2e8f0",
-        toggleOn:  "#4b5563",  accent:       "#4b5563",
+        toggleOn:  "#34c759",  accent:       "#3b82f6",
         overlayBtnBg: "#e8eef5", pullHandle: "#cbd5e1",
         codeBg:    "#ffffff",  codeHeaderBg: "#f8fafc",  codeBorder: "#e2e8f0", codeText: "#1e293b",
         zoomBg:    "white",    zoomBorder:   "#e2e8f0",  zoomText: "#1e293b",   zoomMuted: "#64748b", zoomDivider: "#e2e8f0",
@@ -289,7 +289,7 @@ const UI_THEMES: Record<string, UiTheme> = {
         panelBg:   "#0f1017",  panelBorder:  "#1e2030",
         tabBarBg:  "#0d0e14",  activeTab:    "#1e2030",   activeTabText: "#c0caf5", inactiveTabText: "#565f89",
         sectionLabel: "#565f89", bodyText:   "#a9b1d6",   divider: "#1e2030",
-        toggleOn:  "#7dcfff",  accent:       "#7aa2f7",
+        toggleOn:  "#34c759",  accent:       "#3b82f6",
         overlayBtnBg: "#1a1b26", pullHandle: "#1e2030",
         codeBg:    "#0d0e14",  codeHeaderBg: "#0a0b10",  codeBorder: "#1e2030", codeText: "#a9b1d6",
         zoomBg:    "#16161e",  zoomBorder:   "#1e2030",  zoomText: "#c0caf5",   zoomMuted: "#565f89", zoomDivider: "#1e2030",
@@ -301,7 +301,7 @@ const UI_THEMES: Record<string, UiTheme> = {
         panelBg:   "#2C2B2F",  panelBorder:  "#403E41",
         tabBarBg:  "#221F22",  activeTab:    "#403E41",   activeTabText: "#FCFCFA", inactiveTabText: "#727072",
         sectionLabel: "#727072", bodyText:   "#FCFCFA",   divider: "#403E41",
-        toggleOn:  "#A9DC76",  accent:       "#AB9DF2",
+        toggleOn:  "#34c759",  accent:       "#3b82f6",
         overlayBtnBg: "#221F22", pullHandle: "#403E41",
         codeBg:    "#221F22",  codeHeaderBg: "#19171a",  codeBorder: "#403E41", codeText: "#FCFCFA",
         zoomBg:    "#2D2A2E",  zoomBorder:   "#403E41",  zoomText: "#FCFCFA",   zoomMuted: "#727072", zoomDivider: "#403E41",
@@ -695,7 +695,7 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportPdf, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid,
+    upd, updL, exportPng, exportPdf, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid, onAutoIcons,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
     mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string | null;
@@ -703,6 +703,7 @@ function SettingsContent({
     updL: (p: Partial<Layout>) => void;
     exportPng: () => void; exportPdf: () => void; exportCode: () => void; exportJson: () => void;
     copyCode: () => void; copyLink: () => void; share: () => void;
+    onAutoIcons?: () => void;
     tab: "general" | "components" | "share"; setTab: (t: "general" | "components" | "share") => void;
     selectedPid?: string | null;
 }) {
@@ -738,11 +739,11 @@ function SettingsContent({
                             const active = opts.theme === t;
                             return (
                                 <button key={t} onClick={() => upd({ theme: t })} style={{
-                                    padding: 0, borderRadius: 8, border: active ? `2px solid ${ut.accent}` : `2px solid transparent`,
+                                    padding: 0, borderRadius: 8, border: active ? "1.5px solid #3b82f6" : "1.5px solid transparent",
                                     background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, overflow: "hidden",
                                 }}>
                                     {/* Swatch */}
-                                    <div style={{ width: "100%", height: 32, borderRadius: 6, background: bg, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, border: `1px solid ${active ? ut.accent : ut.panelBorder}` }}>
+                                    <div style={{ width: "100%", height: 32, borderRadius: 6, background: bg, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, border: `1px solid ${active ? "#3b82f6" : ut.panelBorder}` }}>
                                         {dots.map((c, i) => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />)}
                                     </div>
                                     <span style={{ fontSize: fs(9), fontWeight: 700, color: active ? ut.accent : ut.inactiveTabText, paddingBottom: 3 }}>{label}</span>
@@ -873,7 +874,7 @@ function SettingsContent({
                             const active = opts.boxOverlay === v;
                             return (
                                 <button key={v} onClick={() => upd({ boxOverlay: v })} style={{
-                                    padding: 0, borderRadius: 8, border: active ? `2px solid ${ut.accent}` : "2px solid transparent",
+                                    padding: 0, borderRadius: 8, border: active ? "1.5px solid #3b82f6" : "1.5px solid transparent",
                                     background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, overflow: "hidden",
                                 }}>
                                     {/* Swatch */}
@@ -912,7 +913,14 @@ function SettingsContent({
                 {opts.iconMode === "icons" && participants.length > 0 && <>
                     <div style={{ height: 1, background: ut.divider }} />
                     <div>
-                        <div style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Icons</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: fs(9), fontWeight: 700, color: ut.sectionLabel, textTransform: "uppercase", letterSpacing: "0.1em" }}>Icons</span>
+                            {onAutoIcons && <button onClick={onAutoIcons} style={{
+                                fontSize: fs(9), fontWeight: 600, color: "#3b82f6", background: "rgba(59,130,246,0.1)",
+                                border: "1px solid rgba(59,130,246,0.2)", borderRadius: 6, padding: "2px 8px",
+                                cursor: "pointer", transition: "all 0.15s",
+                            }}>Auto</button>}
+                        </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                             {participants.map(p => {
                                 const currentKey = ICON_NODES[opts.icons[p.id]] ? opts.icons[p.id] : guessIconKey(p.label);
@@ -1706,6 +1714,54 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         if (!savedDiagramId) { showToast("Save the diagram first", { color: "#f59e0b" }); return; }
         window.open(`${PROD_URL}/pdf/${savedDiagramId}`, "_blank");
     }, [savedDiagramId]);
+
+    const autoIcons = useCallback(async () => {
+        if (!diagram.participants.length) return;
+        showToast("Picking icons…", { color: "#3b82f6" });
+        try {
+            const iconKeys = Object.keys(ICON_NODES);
+            const res = await fetch("/api/ai/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: `You are an icon picker. Given these sequence diagram participants and the diagram code, pick the best icon for each participant from this list ONLY: ${iconKeys.join(", ")}
+
+Diagram code:
+${code}
+
+Participants: ${diagram.participants.map(p => `${p.id} (label: "${p.label}")`).join(", ")}
+
+Return ONLY a JSON object mapping participant ID to icon key. Example: {"U":"user","S":"server","DB":"database"}
+No explanation, no markdown, just the JSON object.`,
+                }),
+            });
+            if (!res.ok) throw new Error("AI request failed");
+            const data = await res.json();
+            // The AI generate endpoint returns {code} — but we sent a special prompt
+            // Parse the response to find the JSON mapping
+            const text = data.code || data.title || JSON.stringify(data);
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("No JSON in response");
+            const mapping = JSON.parse(jsonMatch[0]);
+            // Validate and apply
+            const newIcons: Record<string, string> = { ...opts.icons };
+            for (const [pid, icon] of Object.entries(mapping)) {
+                if (typeof icon === "string" && ICON_NODES[icon]) {
+                    newIcons[pid] = icon;
+                }
+            }
+            upd({ icons: newIcons });
+            showToast("Icons updated ✓", { color: "#22c55e" });
+        } catch {
+            // Fallback: use the regex-based guessIconKey
+            const newIcons: Record<string, string> = {};
+            diagram.participants.forEach(p => {
+                newIcons[p.id] = guessIconKey(p.label);
+            });
+            upd({ icons: newIcons });
+            showToast("Icons set (fallback)", { color: "#f59e0b" });
+        }
+    }, [code, diagram.participants, opts.icons, upd]);
 
     const copyCode = useCallback(() => {
         navigator.clipboard.writeText(code).then(() => {
@@ -2569,7 +2625,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "12px 12px" }}>
                             <SettingsContent opts={opts} layout={computedLayout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} onAutoIcons={autoIcons} />
                         </div>
                     </div>
                 )}
@@ -2645,7 +2701,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} onAutoIcons={autoIcons} />
                         </div>
                     </div>
                 </div>
