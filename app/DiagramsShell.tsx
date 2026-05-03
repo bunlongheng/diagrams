@@ -13,14 +13,14 @@ type Diagram = {
 export default function DiagramsShell() {
   const [user, setUser] = useState<User | null>(null);
   const [diagrams, setDiagrams] = useState<Diagram[]>([]);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [ready, setReady] = useState(false); // true only after session + diagrams loaded
 
   useEffect(() => {
     const supabase = createClient();
-    if (!supabase) { setSessionChecked(true); return; }
+    if (!supabase) { setReady(true); return; }
     const allowed = process.env.NEXT_PUBLIC_ALLOWED_EMAIL;
 
-    async function fetchDiagrams(_u: User) {
+    async function fetchDiagrams() {
       try {
         const res = await fetch("/api/diagrams");
         if (res.ok) {
@@ -30,32 +30,37 @@ export default function DiagramsShell() {
       } catch { /* ignore fetch errors */ }
     }
 
-    // Use onAuthStateChange as single source of truth.
-    // INITIAL_SESSION fires on every page load with the persisted session (cookie-based, 400-day maxAge).
-    // This covers: fresh login (SIGNED_IN), returning user (INITIAL_SESSION), token refresh (TOKEN_REFRESHED).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null;
       if (u && allowed && u.email !== allowed) {
         supabase.auth.signOut();
         setUser(null);
-        setSessionChecked(true);
+        setReady(true);
       } else if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         setUser(u);
-        if (u) fetchDiagrams(u);
-        setSessionChecked(true);
+        if (u) await fetchDiagrams(); // wait for diagrams before showing UI
+        setReady(true);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setDiagrams([]);
-        setSessionChecked(true);
+        setReady(true);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Hold on dark screen until we know if user is logged in — prevents login flash
-  if (!sessionChecked) {
-    return <div style={{ position: "fixed", inset: 0, background: "#0f1022" }} />;
+  // Show loading until session is checked AND diagrams are fetched
+  if (!ready) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "#f4f5f7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 36, height: 36, border: "3px solid #e5e7eb", borderTopColor: "#7c3aed", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <span style={{ fontSize: 13, color: "#94a3b8", fontFamily: "system-ui" }}>Loading diagrams…</span>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
