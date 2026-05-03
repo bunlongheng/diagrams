@@ -11,7 +11,7 @@ export default function LoginForm() {
     if (!supabase) { setLoading(false); return; }
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: "https://diagrams-bheng.vercel.app/auth/callback" },
     });
   }
 
