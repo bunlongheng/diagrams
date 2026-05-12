@@ -696,13 +696,13 @@ function IconBtn({ active, onClick, accent = "#0a84ff", inactiveBg = "#2a2a2c", 
 // ── Settings content (shared between desktop panel + mobile sheet) ─────────────
 function SettingsContent({
     opts, layout, copied, copiedLink, copiedShare, mobile = false, participants = [], isSequence = true,
-    upd, updL, exportPng, exportPdf, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid, onAutoIcons,
+    upd, updL, exportPng, exportSvg, exportPdf, exportCode, exportJson, copyCode, copyLink, share, viewUrl, tab, setTab, selectedPid, onAutoIcons,
 }: {
     opts: Opts; layout: Layout; copied: boolean; copiedLink: boolean; copiedShare: boolean;
     mobile?: boolean; participants?: Participant[]; isSequence?: boolean; viewUrl: string | null;
     upd: (p: Partial<Opts>) => void;
     updL: (p: Partial<Layout>) => void;
-    exportPng: () => void; exportPdf: () => void; exportCode: () => void; exportJson: () => void;
+    exportPng: () => void; exportSvg: () => void; exportPdf: () => void; exportCode: () => void; exportJson: () => void;
     copyCode: () => void; copyLink: () => void; share: () => void;
     onAutoIcons?: () => void;
     tab: "general" | "components" | "share"; setTab: (t: "general" | "components" | "share") => void;
@@ -2631,7 +2631,7 @@ No explanation, no markdown, just the JSON object.`,
                     <div className="shrink-0 flex flex-col" style={{ width: 268, background: ut.panelBg, borderLeft: `1px solid ${ut.panelBorder}` }}>
                             <div className="flex-1 overflow-y-auto" style={{ padding: "12px 12px" }}>
                             <SettingsContent opts={opts} layout={computedLayout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} onAutoIcons={autoIcons} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportSvg={exportSvg} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} onAutoIcons={autoIcons} />
                         </div>
                     </div>
                 )}
@@ -2707,7 +2707,7 @@ No explanation, no markdown, just the JSON object.`,
                         {/* Sheet content */}
                         <div className="flex-1 overflow-y-auto" style={{ padding: "20px 20px 40px" }}>
                             <SettingsContent opts={opts} layout={layout} copied={copied} copiedLink={copiedLink} copiedShare={copiedShare} mobile={true} participants={diagram.participants} isSequence={isSequence}
-                                upd={upd} updL={updL} exportPng={exportPng} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} onAutoIcons={autoIcons} />
+                                upd={upd} updL={updL} exportPng={exportPng} exportSvg={exportSvg} exportPdf={exportPdf} exportCode={exportCode} exportJson={exportJson} copyCode={copyCode} copyLink={copyLink} share={share} viewUrl={mounted ? buildViewUrl() : ""} tab={settingsTab} setTab={setSettingsTab} selectedPid={selectedPid} onAutoIcons={autoIcons} />
                         </div>
                     </div>
                 </div>
