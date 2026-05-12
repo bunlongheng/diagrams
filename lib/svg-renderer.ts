@@ -261,9 +261,10 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
         });
         notesSectionH = maxColH + NOTE_SEC_PAD * 2;
     }
-    const H = TOP_PAD + TITLE_H + TP + BH + VP + Math.max(0, totalSteps - 1) * MG + VP + BH + notesSectionH + BOT_PAD;
+    const stepGap = MG + VP;
+    const H = TOP_PAD + TITLE_H + TP + BH + VP + Math.max(0, totalSteps - 1) * stepGap + VP + BH + notesSectionH + BOT_PAD;
     const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - notesSectionH - BH;
-    const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * MG;
+    const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * stepGap;
     const f = `'${o.font}', sans-serif`;
     const ld = LIFELINE_DASH.solid;
     const lifelineSW = ld.sw ?? 1.5;
