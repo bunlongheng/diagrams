@@ -1683,9 +1683,9 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     };
 
     const exportPng = useCallback(() => {
-        const exportSvg = activeSvg;
-        if (!exportSvg) return;
-        const url = URL.createObjectURL(new Blob([exportSvg], { type: "image/svg+xml" }));
+        const svgStr = activeSvg;
+        if (!svgStr) return;
+        const url = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml" }));
         const img = new Image();
         img.onload = () => {
             const c = document.createElement("canvas");
