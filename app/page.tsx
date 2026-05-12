@@ -829,32 +829,32 @@ function SettingsContent({
                             style={{ background: "#FF6188", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
                             PNG
                         </button>
-                        <button onClick={exportPdf}
+                        <button onClick={exportSvg}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "#FC9867", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
-                            PDF
+                            SVG
                         </button>
                         {/* Row 2 */}
-                        <button onClick={exportCode}
+                        <button onClick={exportPdf}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
                             style={{ background: "#FFD866", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
-                            Code
+                            PDF
                         </button>
-                        <button onClick={exportJson}
-                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: "#A9DC76", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
-                            JSON
-                        </button>
-                        {/* Row 3 */}
                         <button onClick={copyLink}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: copiedLink ? "#A9DC76" : "#78DCE8", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
+                            style={{ background: copiedLink ? "#A9DC76" : "#A9DC76", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
                             {copiedLink ? "Copied!" : "Link"}
                         </button>
+                        {/* Row 3 */}
                         <button onClick={share}
                             className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
-                            style={{ background: copiedShare ? "#A9DC76" : "#AB9DF2", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
+                            style={{ background: copiedShare ? "#A9DC76" : "#78DCE8", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
                             {copiedShare ? "Shared!" : "Share"}
+                        </button>
+                        <button onClick={exportCode}
+                            className="rounded-xl font-semibold transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: "#AB9DF2", color: "#221F22", cursor: "pointer", padding: mobile ? "9px 0" : "7px 0", fontSize: fs(11) }}>
+                            Code
                         </button>
                     </div>
                 </div>
@@ -1714,6 +1714,11 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     const exportPdf = useCallback(() => {
         if (!savedDiagramId) { showToast("Save the diagram first", { color: "#f59e0b" }); return; }
         window.open(`${PROD_URL}/pdf/${savedDiagramId}`, "_blank");
+    }, [savedDiagramId]);
+
+    const exportSvg = useCallback(() => {
+        if (!savedDiagramId) { showToast("Save the diagram first", { color: "#f59e0b" }); return; }
+        window.open(`${PROD_URL}/svg/${savedDiagramId}`, "_blank");
     }, [savedDiagramId]);
 
     const autoIcons = useCallback(async () => {
