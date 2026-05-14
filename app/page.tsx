@@ -36,7 +36,7 @@ interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: bo
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
 const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: false, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "icons", icons: {}, boxOverlay: "gloss", autoLayout: true, labelOverrides: {}, colorOverrides: {} };
-const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 28 };
+const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 20 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PAL = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#84cc16","#0891b2"];
@@ -1498,8 +1498,8 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         const pillEstimate = maxMsgLen * (FS * 0.65) + 48; // 0.65 char width + circle room
         const spacing = Math.round(Math.max(boxWidth + 80, boxWidth + pillEstimate));
 
-        // vPad: tighter for dense diagrams
-        const vPad = rows > 20 ? 30 : 44;
+        // vPad: default to the slider minimum so steps sit tight on load
+        const vPad = 20;
 
         // margin: proportional to spacing
         const margin = Math.round(Math.max(80, spacing * 0.4));
