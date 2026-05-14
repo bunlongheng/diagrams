@@ -1,5 +1,4 @@
-// Extracted from app/page.tsx — pure functions, no DOM, runs on server
-// Used by both the client (page.tsx) and server (/api/pdf, /d/[id])
+// Pure SVG-rendering functions — no DOM, runs on client and server
 
 export interface Participant { id: string; label: string; color: string }
 export type Arrow = "solid" | "dashed";
@@ -10,7 +9,7 @@ export interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredT
 export interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
 export const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: false, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "icons", icons: {}, boxOverlay: "gloss", autoLayout: true, labelOverrides: {}, colorOverrides: {} };
-export const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 28 };
+export const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 20 };
 
 export { parse, buildSvg, esc, PAL, PAL_MONOKAI, THEMES, ICON_NODES, guessIconKey, renderIcon, detectDiagramType, DEFAULT_DIAGRAM_TITLE };
 

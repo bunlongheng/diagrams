@@ -32,7 +32,10 @@ function toSlug(title: string): string {
  *   }
  *
  * Response 201:
- *   { "id": "…", "url": "https://diagrams-bheng.vercel.app/?id=…", … }
+ *   { "svg": "https://diagrams-bheng.vercel.app/svg/…" }
+ *
+ * The svg URL is the only field returned — vector, sharp at any zoom,
+ * suitable for embedding in Confluence (Cloud), Notion, docs, etc.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -192,7 +195,7 @@ async function postHandler(req: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://diagrams-bheng.vercel.app";
   return NextResponse.json(
-    { ...diagram, url: `${baseUrl}/d/${diagram.id}`, svg: `${baseUrl}/svg/${diagram.id}`, editor: `${baseUrl}/?id=${diagram.id}` },
+    { svg: `${baseUrl}/svg/${diagram.id}` },
     { status: 201 },
   );
 }
