@@ -36,7 +36,7 @@ interface Opts { coloredLines: boolean; coloredNumbers: boolean; coloredText: bo
 interface Layout { stepHeight: number; boxWidth: number; spacing: number; textSize: number; margin: number; vPad: number }
 
 const DEFAULT_OPTS: Opts = { coloredLines: true, coloredNumbers: true, coloredText: true, showNotes: false, font: "Roboto", lifelineDash: "solid", theme: "light", iconMode: "icons", icons: {}, boxOverlay: "gloss", autoLayout: true, labelOverrides: {}, colorOverrides: {} };
-const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 20 };
+const DEFAULT_LAYOUT: Layout = { stepHeight: 34, boxWidth: 141, spacing: 250, textSize: 13, margin: 80, vPad: 0 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const PAL = ["#ef4444","#f97316","#eab308","#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#f43f5e","#84cc16","#0891b2"];
@@ -789,7 +789,7 @@ function SettingsContent({
                             <SliderRow label="Height" value={layout.stepHeight} min={30} max={80} fontSize={fs(12)} ut={ut} onChange={v => updL({ stepHeight: v })} />
                             <SliderRow label="Width" value={layout.boxWidth} min={80} max={400} fontSize={fs(12)} ut={ut} onChange={v => updL({ boxWidth: v })} />
                             <SliderRow label="Gap" value={layout.spacing} min={120} max={800} fontSize={fs(12)} ut={ut} onChange={v => updL({ spacing: v })} />
-                            <SliderRow label="V.Gap" value={layout.vPad ?? 44} min={20} max={300} fontSize={fs(12)} ut={ut} onChange={v => updL({ vPad: v })} />
+                            <SliderRow label="V.Gap" value={layout.vPad ?? 0} min={0} max={300} fontSize={fs(12)} ut={ut} onChange={v => updL({ vPad: v })} />
                             <SliderRow label="Font" value={layout.textSize} min={8} max={20} unit="px" fontSize={fs(12)} ut={ut} onChange={v => updL({ textSize: v })} />
                             <SliderRow label="Margin" value={layout.margin} min={120} max={200} fontSize={fs(12)} ut={ut} onChange={v => updL({ margin: v })} />
                         </div>}
@@ -1498,8 +1498,8 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         const pillEstimate = maxMsgLen * (FS * 0.65) + 48; // 0.65 char width + circle room
         const spacing = Math.round(Math.max(boxWidth + 80, boxWidth + pillEstimate));
 
-        // vPad: default to the slider minimum so steps sit tight on load
-        const vPad = 20;
+        // vPad: zero by default — stepHeight already contains the row, so 0 is tight without overlap
+        const vPad = 0;
 
         // margin: proportional to spacing
         const margin = Math.round(Math.max(80, spacing * 0.4));
