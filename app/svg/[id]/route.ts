@@ -25,6 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const layout: Layout = { ...DEFAULT_LAYOUT, ...(settings?.layout ?? {}) };
 
   const diagram = parse(code);
+  if (!diagram.title && title) diagram.title = title;
   const svg = buildSvg(diagram, opts, layout, created_at);
   const filename = `${toSlug(title || "diagram")}.svg`;
 
