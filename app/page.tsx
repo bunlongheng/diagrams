@@ -1126,6 +1126,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     const [lanIp, setLanIp] = useState<string | null>(null);
     const [savedDiagramId, setSavedDiagramId] = useState<string | null>(null);
     const [diagramCreatedAt, setDiagramCreatedAt] = useState<string | null>(null);
+    const [diagramDbTitle, setDiagramDbTitle] = useState<string | null>(null);
     const [isSharedDiagram, setIsSharedDiagram] = useState(false);
     const [titleEdit, setTitleEdit] = useState<{ value: string; rect: DOMRect } | null>(null);
 
@@ -1420,6 +1421,7 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
                 }
                 if (typeof d?.is_public === "boolean") setIsSharedDiagram(d.is_public);
                 if (d?.created_at) setDiagramCreatedAt(d.created_at);
+                if (d?.title) setDiagramDbTitle(d.title);
                 if (d?.settings?.opts) setOpts(o => ({ ...o, ...d.settings.opts }));
                 if (d?.settings?.layout) setLayout(l => ({ ...l, ...d.settings.layout }));
                 setDiagramLoading(false);
@@ -1507,7 +1509,10 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
         return { textSize: FS, boxWidth, spacing, stepHeight, vPad, margin };
     }, [opts.autoLayout, opts.iconMode, diagram, layout]);
 
-    const svg = useMemo(() => buildSvg(diagram, opts, computedLayout, diagramCreatedAt ?? undefined), [diagram, opts, computedLayout, diagramCreatedAt]);
+    const svg = useMemo(() => {
+        const d = diagram.title || !diagramDbTitle ? diagram : { ...diagram, title: diagramDbTitle };
+        return buildSvg(d, opts, computedLayout, diagramCreatedAt ?? undefined);
+    }, [diagram, opts, computedLayout, diagramCreatedAt, diagramDbTitle]);
 
     const activeSvg = svg;
 
