@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import db from "@/lib/db";
-
-function toSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "untitled";
-}
+import { uniqueDiagramSlug } from "@/lib/slugs";
 
 async function resolveUser(req: NextRequest) {
   const bearer = req.headers.get("authorization")?.replace("Bearer ", "").trim();
@@ -50,18 +44,7 @@ export async function POST(req: NextRequest) {
   if (!title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
   if (!code?.trim()) return NextResponse.json({ error: "code is required" }, { status: 400 });
 
-  const baseSlug = toSlug(title || "untitled");
-  let slug = baseSlug;
-  let counter = 2;
-  while (true) {
-    const { rows } = await db.query(
-      "SELECT id FROM diagrams WHERE user_id = $1 AND slug = $2 LIMIT 1",
-      [user.id, slug]
-    );
-    if (rows.length === 0) break;
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
+  const slug = await uniqueDiagramSlug(user.id, title || "untitled");
 
   const finalTags = isApiCall ? [...new Set([...(tags ?? []), "API"])] : (tags ?? []);
   const { rows, rowCount } = await db.query(

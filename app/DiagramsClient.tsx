@@ -673,6 +673,10 @@ function DiagramCard({ d, isShared, onOpen, onDelete, onShare, onRename, onTag, 
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open diagram ${d.title}`}
       className={isNew ? "dc-new-card" : undefined}
       style={{
         background: "#ffffff",

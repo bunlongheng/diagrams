@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import db from "@/lib/db";
+import { uniqueDiagramSlug } from "@/lib/slugs";
 
 const AI_SECRET = process.env.AI_API_SECRET;
-
-function toSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "untitled";
-}
 
 /**
  * POST /api/ai/diagrams
@@ -156,17 +150,7 @@ async function postHandler(req: NextRequest) {
   }
 
   // ── Unique slug ───────────────────────────────────────────────────────────
-  const baseSlug = toSlug(title);
-  let slug = baseSlug;
-  let counter = 2;
-  while (true) {
-    const { rows } = await db.query(
-      "SELECT id FROM diagrams WHERE user_id = $1 AND slug = $2 LIMIT 1",
-      [ownerId, slug]
-    );
-    if (rows.length === 0) break;
-    slug = `${baseSlug}-${counter++}`;
-  }
+  const slug = await uniqueDiagramSlug(ownerId, title);
 
   // ── Ensure title is embedded in the code ────────────────────────────────
   let finalCode = code.trim();
