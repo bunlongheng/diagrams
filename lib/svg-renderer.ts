@@ -291,7 +291,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
     ps.forEach((p, i) => {
         const col = pcol(i);
         const c = o.coloredLines ? col + "60" : "#d1d5db";
-        parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr}/>`);
+        parts.push(`<line x1="${cx(i)}" y1="${lt}" x2="${cx(i)}" y2="${lb}" stroke="${c}" stroke-width="${lifelineSW}" stroke-dasharray="${ld.da}"${lifelineCapAttr} data-pid="${p.id}"/>`);
     });
     const renderBox = (p: Participant, i: number, y: number) => {
         p = { ...p, label: p.label.replace(/<br\s*\/?>/gi, " ").trim() };
@@ -337,6 +337,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
         const fi = idx.get(msg.from) ?? 0, ti = idx.get(msg.to) ?? 0;
         const y = msgY(msg.seqPos); const fx = cx(fi), tx = cx(ti);
         const fpColor = pcol(fi);
+        parts.push(`<g data-from="${msg.from}" data-to="${msg.to}">`);
         const lc = o.coloredLines ? fpColor : "#374151";
         const pillTextFill = o.theme === "dark" ? "#ffffff" : "#000000";
         if (fi === ti) {
@@ -388,8 +389,12 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
             parts.push(`<circle cx="${fx}" cy="${y}" r="${cr}" fill="${fpColor}" stroke="${fpColor}" stroke-width="2"/>`);
             parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${th.labelFill}">${stepNum}</text>`);
         }
+        parts.push(`</g>`);
     });
     ps.forEach((p, i) => renderBox(p, i, lb));
     if (defs.length) parts.splice(1, 0, `<defs>${defs.join("")}</defs>`);
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}</svg>`;
+    // Tiny hover interactivity: hover a participant box/lifeline -> dim everything not connected to it.
+    // Only runs when the SVG is opened as a standalone document (e.g. /svg/<id>); harmless when embedded as <img>.
+    const interactivity = `<style>[data-pid]{cursor:pointer}[data-pid],g[data-from]{transition:opacity .14s}</style><script><![CDATA[(function(){var es=document.querySelectorAll('[data-pid],g[data-from]');function d(id){es.forEach(function(e){var k=e.getAttribute('data-pid')===id||e.getAttribute('data-from')===id||e.getAttribute('data-to')===id;e.style.opacity=k?'1':'0.18'})}function c(){es.forEach(function(e){e.style.opacity=''})}document.querySelectorAll('[data-pid]').forEach(function(b){b.addEventListener('mouseenter',function(){d(b.getAttribute('data-pid'))});b.addEventListener('mouseleave',c)})})();]]></script>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}${interactivity}</svg>`;
 }
