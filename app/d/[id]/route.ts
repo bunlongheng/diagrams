@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     headers: {
       "Content-Type": "image/svg+xml",
       "Content-Disposition": "inline",
-      "Cache-Control": "public, max-age=60",
+      "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
     },
   });
 }

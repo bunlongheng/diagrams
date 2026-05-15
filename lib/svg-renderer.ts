@@ -393,8 +393,10 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
     });
     ps.forEach((p, i) => renderBox(p, i, lb));
     if (defs.length) parts.splice(1, 0, `<defs>${defs.join("")}</defs>`);
-    // Tiny hover interactivity: hover a participant box/lifeline -> dim everything not connected to it.
-    // Only runs when the SVG is opened as a standalone document (e.g. /svg/<id>); harmless when embedded as <img>.
-    const interactivity = `<style>[data-pid]{cursor:pointer}[data-pid],g[data-from]{transition:opacity .14s}</style><script><![CDATA[(function(){var es=document.querySelectorAll('[data-pid],g[data-from]');function d(id){es.forEach(function(e){var k=e.getAttribute('data-pid')===id||e.getAttribute('data-from')===id||e.getAttribute('data-to')===id;e.style.opacity=k?'1':'0.18'})}function c(){es.forEach(function(e){e.style.opacity=''})}document.querySelectorAll('[data-pid]').forEach(function(b){b.addEventListener('mouseenter',function(){d(b.getAttribute('data-pid'))});b.addEventListener('mouseleave',c)})})();]]></script>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join("")}${interactivity}</svg>`;
+    // Hover interactivity: hover a participant -> dim everything not connected.
+    // Click pins the selection (works on touch). Click outside or click the
+    // same participant again to clear. Only runs when SVG is opened as a
+    // standalone document (e.g. /svg/<id>); harmless when embedded as <img>.
+    const interactivity = `<style>[data-pid]{cursor:pointer}[data-pid],g[data-from]{transition:opacity .14s}</style><script><![CDATA[(function(){var es=document.querySelectorAll('[data-pid],g[data-from]');var pinned=null;function d(id){es.forEach(function(e){var k=e.getAttribute('data-pid')===id||e.getAttribute('data-from')===id||e.getAttribute('data-to')===id;e.style.opacity=k?'1':'0.18'})}function c(){es.forEach(function(e){e.style.opacity=''})}document.querySelectorAll('[data-pid]').forEach(function(b){var id=b.getAttribute('data-pid');b.addEventListener('mouseenter',function(){if(!pinned)d(id)});b.addEventListener('mouseleave',function(){if(!pinned)c()});b.addEventListener('click',function(ev){ev.stopPropagation();if(pinned===id){pinned=null;c()}else{pinned=id;d(id)}})});document.addEventListener('click',function(){if(pinned){pinned=null;c()}})})();]]></script>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(diagramTitle)}"><title>${esc(diagramTitle)}</title>${parts.join("")}${interactivity}</svg>`;
 }
