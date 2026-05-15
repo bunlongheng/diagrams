@@ -178,10 +178,15 @@ async function postHandler(req: NextRequest) {
   }
 
   // ── Insert ────────────────────────────────────────────────────────────────
+  // vPad: 50 gives breathing room between pills so API-rendered SVGs never
+  // overlap, regardless of message-text or pill heights.
   const settings = {
     opts: {
       boxOverlay: "gloss",
       iconMode: "icons",
+    },
+    layout: {
+      vPad: 50,
     },
   };
 
