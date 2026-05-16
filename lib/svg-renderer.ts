@@ -85,10 +85,41 @@ function renderIcon(key: string, icx: number, icy: number, size: number, color =
 }
 
 const DIAGRAM_TYPES: Record<string, string> = {
-    sequencediagram: "sequence", graph: "flowchart", flowchart: "flowchart",
-    classdiagram: "class", erdiagram: "er", statediagram: "state",
-    gantt: "gantt", pie: "pie", journey: "journey", mindmap: "mindmap",
-    timeline: "timeline", architecture: "architecture",
+    sequencediagram: "sequence",
+    graph:           "flowchart",
+    flowchart:       "flowchart",
+    classdiagram:    "class",
+    erdiagram:       "er",
+    statediagram:    "state",
+    "statediagram-v2": "state",
+    gantt:           "gantt",
+    pie:             "pie",
+    journey:         "journey",
+    gitgraph:        "git",
+    "gitgraph:":     "git",
+    mindmap:         "mindmap",
+    timeline:        "timeline",
+    quadrantchart:   "quadrant",
+    xychart:         "xychart",
+    "xychart-beta":  "xychart",
+    requirementdiagram: "requirement",
+    "c4context":     "c4",
+    "c4container":   "c4",
+    "c4component":   "c4",
+    "c4dynamic":     "c4",
+    "c4deployment":  "c4",
+    block:           "block",
+    "block-beta":    "block",
+    sankey:          "sankey",
+    "sankey-beta":   "sankey",
+    packet:          "packet",
+    "packet-beta":   "packet",
+    kanban:          "kanban",
+    architecture:    "architecture",
+    "architecture-beta": "architecture",
+    radar:           "radar",
+    "radar-beta":    "radar",
+    treemap:         "treemap",
 };
 
 function stripFrontmatter(code: string): string {
@@ -106,7 +137,7 @@ function detectDiagramType(code: string): string {
     const stripped = stripFrontmatter(code);
     for (const raw of stripped.split("\n")) {
         const line = raw.trim();
-        if (!line || line.startsWith("%%") || /^title[\s:]/i.test(line)) continue;
+        if (!line || line.startsWith("%%") || /^title[\s:]/i.test(line) || /^accTitle\s*:/i.test(line) || /^accDescr\s*:/i.test(line)) continue;
         const key = line.toLowerCase().replace(/\s+.*$/, "");
         return DIAGRAM_TYPES[key] ?? "diagram";
     }
@@ -286,7 +317,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
     const subDate = isDark ? "#94a3b8" : "#718096";
     const titleAvailW = W - 2 * LP;
     const titleFS = Math.max(14, Math.min(30, Math.floor(titleAvailW / (diagramTitle.length * 0.58))));
-    parts.push(`<text id="diagram-title" x="${LP}" y="${titleY - 10}" dominant-baseline="middle" font-family="${f}" font-size="${titleFS}" font-weight="800" fill="${titleColor}">${esc(diagramTitle)}</text>`);
+    parts.push(`<text id="diagram-title" x="${LP}" y="${titleY - 10}" dominant-baseline="middle" font-family="${f}" font-size="${titleFS}" font-weight="800" fill="${titleColor}" style="cursor:pointer">${esc(diagramTitle)}</text>`);
     parts.push(`<text x="${LP}" y="${titleY + 20}" dominant-baseline="middle" font-family="${f}" font-size="11" fill="${subDate}"><tspan font-weight="800" fill="${subBH}">BH</tspan><tspan font-weight="300" fill="${subPipe}"> | </tspan><tspan font-weight="400">${dateStr} · ${timeStr}</tspan></text>`);
     ps.forEach((p, i) => {
         const col = pcol(i);
@@ -296,7 +327,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
     const renderBox = (p: Participant, i: number, y: number) => {
         p = { ...p, label: p.label.replace(/<br\s*\/?>/gi, " ").trim() };
         const bw = pBW[i]; const x = cx(i) - bw / 2; const col = pcol(i);
-        parts.push(`<g data-pid="${p.id}">`);
+        parts.push(`<g data-pid="${p.id}" style="cursor:pointer">`);
         parts.push(`<rect x="${x}" y="${y}" width="${bw}" height="${BH}" rx="${BR}" fill="${col}" stroke="${th.boxStroke}" stroke-width="${th.boxStrokeW}"/>`);
         if (o.boxOverlay !== "none") {
             const clipId = `bcp${i}_${Math.round(y)}`;
