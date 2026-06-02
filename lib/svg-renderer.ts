@@ -371,11 +371,14 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
         const fi = idx.get(msg.from) ?? 0, ti = idx.get(msg.to) ?? 0;
         const y = msgY(msg.seqPos); const fx = cx(fi), tx = cx(ti);
         const fpColor = pcol(fi);
+        const stepNum = msg.displayStep ?? msg.step;
+        // Uniform circle radius for single- and double-digit step numbers.
+        const cr = 12;
         parts.push(`<g data-from="${msg.from}" data-to="${msg.to}">`);
         const lc = o.coloredLines ? fpColor : "#374151";
         const pillTextFill = o.theme === "dark" ? "#ffffff" : "#000000";
         if (fi === ti) {
-            const pillOffset = o.coloredNumbers ? fx + 14 : fx + 6;
+            const pillOffset = o.coloredNumbers ? fx + cr + 4 : fx + 6;
             if (o.coloredText) {
                 const pillH = FS + 8, pillW = Math.max(40, msg.text.length * (FS * 0.62) + 12);
                 const pillX = pillOffset, pillY = y - pillH / 2;
@@ -388,7 +391,7 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
         } else {
             const dir = tx > fx ? 1 : -1;
             const isDashed = msg.arrow === "dashed";
-            const lineX1 = o.coloredNumbers ? fx + dir * 11 : fx;
+            const lineX1 = o.coloredNumbers ? fx + dir * (cr + 4) : fx;
             if (isDashed) {
                 parts.push(`<line x1="${lineX1}" y1="${y}" x2="${tx-dir*AH}" y2="${y}" stroke="${lc}"${DASHED_STYLE}/>`);
                 if (dir === 1) parts.push(`<polyline points="${tx-AH},${y-5} ${tx},${y} ${tx-AH},${y+5}" fill="none" stroke="${lc}" stroke-width="1.5"/>`);
@@ -418,8 +421,6 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
             }
         }
         if (o.coloredNumbers) {
-            const stepNum = msg.displayStep ?? msg.step;
-            const cr = stepNum >= 10 ? 14 : 10;
             parts.push(`<circle cx="${fx}" cy="${y}" r="${cr}" fill="${fpColor}" stroke="${fpColor}" stroke-width="2"/>`);
             parts.push(`<text x="${fx}" y="${y+1}" text-anchor="middle" dominant-baseline="middle" font-family="${f}" font-size="11" font-weight="700" fill="${th.labelFill}">${stepNum}</text>`);
         }
