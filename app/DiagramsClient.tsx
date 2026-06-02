@@ -1,15 +1,22 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
+import { signOut as nextAuthSignOut } from "next-auth/react";
 import { CuteToast, showToast } from "@/app/CuteToast";
-import type { User } from "@supabase/supabase-js";
-import confetti from "canvas-confetti";
-import { Bot, Plug, Briefcase, User as UserIcon, FlaskConical, Clipboard, GraduationCap, Lightbulb, Rocket, Star, Heart, Tag } from "lucide-react";
+import { Bot, Plug, Briefcase, User as UserIcon, FlaskConical, Clipboard, GraduationCap, Lightbulb, Rocket, Star, Heart, Tag, Youtube } from "lucide-react";
+
+// Shape the shell passes in: NextAuth session user mapped to the fields this
+// component reads (replaces the old Supabase User type).
+export type ShellUser = {
+  email?: string;
+  user_metadata?: { full_name?: string; name?: string; avatar_url?: string; picture?: string };
+};
 
 type Diagram = {
   id: string; title: string; slug: string;
   diagram_type: string; created_at: string; updated_at: string; code: string;
   tags: string[];
+  youtube_id?: string | null;
 };
 
 // ── Shared (public) ───────────────────────────────────────────────────────────
@@ -329,6 +336,27 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   );
 }
 
+// ── YouTube thumbnail ───────────────────────────────────────────────────────────
+// Shown instead of the diagram minimap for YouTube automations (tag "YouTube").
+function YouTubeThumb({ id, title }: { id: string; title: string }) {
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: "2 / 1", borderRadius: 8, overflow: "hidden", background: "#000" }}>
+      <Image
+        src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`}
+        alt={title}
+        fill
+        sizes="224px"
+        style={{ objectFit: "cover" }}
+      />
+      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ width: 34, height: 24, borderRadius: 6, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="#fff"><polygon points="8 5 19 12 8 19 8 5" /></svg>
+        </span>
+      </span>
+    </div>
+  );
+}
+
 // ── AI Thinking animation ─────────────────────────────────────────────────────
 const AI_TOKENS = [
   "tokens","context","embedding","inference","neural","attention","transformer",
@@ -544,7 +572,11 @@ const TAG_PALETTE = [
 const TAG_ICONS: Record<string, React.ComponentType<any>> = {
   AI: Bot, API: Plug, Work: Briefcase, Personal: UserIcon,
   Research: FlaskConical, Pasted: Clipboard, Learning: GraduationCap,
-  Idea: Lightbulb, Project: Rocket, Favorite: Star, Love: Heart,
+  Idea: Lightbulb, Project: Rocket, Favorite: Star, Love: Heart, YouTube: Youtube,
+};
+// Tags pinned to a fixed color regardless of sort order (brand identity).
+const TAG_FIXED_COLORS: Record<string, typeof TAG_PALETTE[0]> = {
+  YouTube: { bg: "#fef2f2", text: "#cc0000", border: "#fca5a5" },
 };
 function TagIcon({ tag, size = 10 }: { tag: string; size?: number }) {
   const Icon = TAG_ICONS[tag] ?? Tag;
@@ -553,7 +585,7 @@ function TagIcon({ tag, size = 10 }: { tag: string; size?: number }) {
 
 function buildTagColorMap(tags: string[]): Map<string, typeof TAG_PALETTE[0]> {
   const map = new Map<string, typeof TAG_PALETTE[0]>();
-  [...tags].sort().forEach((t, i) => map.set(t, TAG_PALETTE[i % TAG_PALETTE.length]));
+  [...tags].sort().forEach((t, i) => map.set(t, TAG_FIXED_COLORS[t] ?? TAG_PALETTE[i % TAG_PALETTE.length]));
   return map;
 }
 const FALLBACK_TAG_STYLE = { bg: "#f0f1f3", text: "#65676b", border: "#e4e6e8" };
@@ -715,9 +747,11 @@ function DiagramCard({ d, isShared, onOpen, onDelete, onShare, onRename, onTag, 
         </div>
       )}
 
-      {/* Minimap */}
+      {/* Preview — YouTube thumbnail for YouTube automations, else diagram minimap */}
       <div style={{ padding: "0 12px 13px" }}>
-        <DiagramMinimap code={d.code} type={d.diagram_type} />
+        {d.youtube_id
+          ? <YouTubeThumb id={d.youtube_id} title={d.title} />
+          : <DiagramMinimap code={d.code} type={d.diagram_type} />}
       </div>
 
       {/* Hover actions */}
@@ -751,7 +785,7 @@ function DiagramCard({ d, isShared, onOpen, onDelete, onShare, onRename, onTag, 
 const LS_KEY = "diagrams_user_cache";
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function DiagramsClient({ user, diagrams: initial }: { user: User; diagrams: Diagram[] }) {
+export default function DiagramsClient({ user, diagrams: initial }: { user: ShellUser; diagrams: Diagram[] }) {
   const [diagrams, setDiagrams] = useState(initial);
   useEffect(() => { setDiagrams(initial); }, [initial]);
 
@@ -791,45 +825,8 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // ── Realtime: listen for AI-created diagrams ──────────────────────────────
-  useEffect(() => {
-    const supabase = createClient();
-
-    function playChime() {
-      try {
-        const ctx = new AudioContext();
-        const gain = ctx.createGain();
-        gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
-        [880, 1108, 1320].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          osc.type = "sine";
-          osc.frequency.value = freq;
-          osc.connect(gain);
-          osc.start(ctx.currentTime + i * 0.07);
-          osc.stop(ctx.currentTime + 1.2);
-        });
-      } catch {}
-    }
-
-    const channel = supabase
-      .channel("ai-diagrams")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "diagrams" }, (payload: { new: Diagram }) => {
-        const d = payload.new as Diagram;
-        setDiagrams(prev => prev.some(x => x.id === d.id) ? prev : [d, ...prev]);
-        playChime();
-        showToast(`✦ "${d.title}" created by AI`, { color: "#1c1e21" });
-        setNewCardId(d.id);
-        confetti({ particleCount: 120, spread: 80, origin: { y: 0.3 }, startVelocity: 45, ticks: 200 });
-        setTimeout(() => { window.location.href = `/?id=${d.id}`; }, 1200);
-        setTimeout(() => setNewCardId(null), 2600);
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  // Realtime AI-diagram notifications were Supabase Realtime; removed with the
+  // Supabase migration. (Could be restored later via Pusher, like Stickies.)
 
   // ── Global paste — save new record + open in editor ───────────────────────
   useEffect(() => {
@@ -897,7 +894,7 @@ export default function DiagramsClient({ user, diagrams: initial }: { user: User
   function signOut() {
     const farewells = ["Later!","See ya!","Peace out!","Catch you later!","Adios!","So long!","Bye for now!","Take care!","Until next time!"];
     const msg = farewells[Math.floor(Math.random() * farewells.length)];
-    createClient().auth.signOut().then(() => {
+    nextAuthSignOut({ redirect: false }).then(() => {
       localStorage.removeItem(LS_KEY);
       showToast(msg);
       setTimeout(() => window.location.reload(), 1800);

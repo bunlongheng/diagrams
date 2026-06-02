@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { isLocal } from "@/lib/is-local";
+import { authorizeOwner, ownerId } from "@/lib/auth-owner";
 import db from "@/lib/db";
 
 function toSlug(title: string): string {
@@ -28,11 +27,9 @@ CRITICAL rules:
 - Escape all newlines as \\n in the JSON string`;
 
 export async function POST(req: NextRequest) {
-  // ── Auth: bypass for localhost/LAN, require session in production ──────────
-  if (!isLocal(req)) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // ── Auth: local/LAN bypass, Bearer secret, or owner session ───────────────
+  if (!(await authorizeOwner(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: { prompt?: string };
@@ -66,19 +63,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Save to DB ────────────────────────────────────────────────────────────
-  const ownerEmail = process.env.ALLOWED_EMAIL;
-  if (!ownerEmail) return NextResponse.json({ error: "ALLOWED_EMAIL not configured" }, { status: 500 });
-  const admin = createAdminClient();
-  const { data: users } = await admin.auth.admin.listUsers();
-  const owner = users?.users.find(u => u.email === ownerEmail);
-  if (!owner) return NextResponse.json({ error: "Owner not found" }, { status: 500 });
+  const ownerUserId = ownerId();
+  if (!ownerUserId) return NextResponse.json({ error: "OWNER_USER_ID not configured" }, { status: 500 });
 
   const baseSlug = toSlug(title);
   let slug = baseSlug, counter = 2;
   while (true) {
     const { rows } = await db.query(
       "SELECT id FROM diagrams WHERE user_id = $1 AND slug = $2 LIMIT 1",
-      [owner.id, slug]
+      [ownerUserId, slug]
     );
     if (rows.length === 0) break;
     slug = `${baseSlug}-${counter++}`;
@@ -93,7 +86,7 @@ export async function POST(req: NextRequest) {
   const settings = { opts: { boxOverlay: "gloss", iconMode: "icons" } };
   const { rows } = await db.query(
     "INSERT INTO diagrams (user_id, title, slug, code, diagram_type, tags, settings, tokens_out) VALUES ($1, $2, $3, $4, $5, $6::text[], $7, $8) RETURNING *",
-    [owner.id, title.trim(), slug, finalCode, "sequence", ["AI"], JSON.stringify(settings), tokensOut]
+    [ownerUserId, title.trim(), slug, finalCode, "sequence", ["AI"], JSON.stringify(settings), tokensOut]
   );
 
   if (rows.length === 0) return NextResponse.json({ error: "Insert failed" }, { status: 500 });

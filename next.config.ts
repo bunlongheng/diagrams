@@ -6,10 +6,14 @@ if (process.env.LOCAL_DEV === "true") {
 }
 
 const nextConfig: NextConfig = {
+    devIndicators: false,
   reactStrictMode: true,
   typescript: { ignoreBuildErrors: true },
   productionBrowserSourceMaps: false,
   serverExternalPackages: ["@resvg/resvg-js", "sharp"],
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "i.ytimg.com", pathname: "/vi/**" }],
+  },
 };
 
 export default nextConfig;

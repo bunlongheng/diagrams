@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/server";
+import { ownerId } from "@/lib/auth-owner";
 import db from "@/lib/db";
 import { uniqueDiagramSlug } from "@/lib/slugs";
 
@@ -132,25 +132,14 @@ async function postHandler(req: NextRequest) {
     },
   }, { status: 400 });
 
-  // ── Resolve owner user_id ──────────────────────────────────────────────────
-  // OWNER_USER_ID env var bypasses Supabase admin lookup (required for local dev
-  // since undici inside Next.js 15 ignores NODE_TLS_REJECT_UNAUTHORIZED=0)
-  let ownerId = process.env.OWNER_USER_ID ?? null;
-  if (!ownerId) {
-    const ownerEmail = process.env.ALLOWED_EMAIL;
-    if (!ownerEmail) {
-      return NextResponse.json({ error: "OWNER_USER_ID or ALLOWED_EMAIL not configured" }, { status: 500 });
-    }
-    const admin = createAdminClient();
-    const { data: users, error: userErr } = await admin.auth.admin.listUsers();
-    if (userErr) return NextResponse.json({ error: userErr.message }, { status: 500 });
-    const owner = users.users.find(u => u.email === ownerEmail);
-    if (!owner) return NextResponse.json({ error: "Owner not found" }, { status: 500 });
-    ownerId = owner.id;
+  // ── Resolve owner user_id (legacy Supabase UUID via OWNER_USER_ID) ─────────
+  const ownerUserId = ownerId();
+  if (!ownerUserId) {
+    return NextResponse.json({ error: "OWNER_USER_ID not configured" }, { status: 500 });
   }
 
   // ── Unique slug ───────────────────────────────────────────────────────────
-  const slug = await uniqueDiagramSlug(ownerId, title);
+  const slug = await uniqueDiagramSlug(ownerUserId, title);
 
   // ── Ensure title is embedded in the code ────────────────────────────────
   let finalCode = code.trim();
@@ -176,7 +165,7 @@ async function postHandler(req: NextRequest) {
 
   const { rows } = await db.query(
     "INSERT INTO diagrams (user_id, title, slug, code, diagram_type, tags, settings) VALUES ($1, $2, $3, $4, $5, $6::text[], $7) RETURNING *",
-    [ownerId, title.trim(), slug, finalCode, diagramType, ["API"], JSON.stringify(settings)]
+    [ownerUserId, title.trim(), slug, finalCode, diagramType, ["API"], JSON.stringify(settings)]
   );
 
   if (rows.length === 0) return NextResponse.json({ error: "Insert failed" }, { status: 500 });

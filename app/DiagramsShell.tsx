@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
-import DiagramsClient from "./DiagramsClient";
+import { getSession } from "next-auth/react";
+import DiagramsClient, { type ShellUser } from "./DiagramsClient";
 import LoginForm from "./SignInButton";
 
 type Diagram = {
@@ -11,46 +10,45 @@ type Diagram = {
 };
 
 export default function DiagramsShell() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ShellUser | null>(null);
   const [diagrams, setDiagrams] = useState<Diagram[]>([]);
-  const [ready, setReady] = useState(false); // true only after session + diagrams loaded
+  const [ready, setReady] = useState(false); // true only after auth + diagrams resolved
 
   useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) { setReady(true); return; }
-    const allowed = process.env.NEXT_PUBLIC_ALLOWED_EMAIL;
+    let cancelled = false;
 
-    async function fetchDiagrams() {
+    (async () => {
       try {
+        // The /api/diagrams gate is the source of truth for authorization:
+        // 200 on a real owner session OR a local/LAN request (Stickies-style
+        // bypass); 401 otherwise. Avoids relying on getSession() alone, which
+        // is null on localhost where there is no real session.
         const res = await fetch("/api/diagrams");
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) setDiagrams(data);
-        }
-      } catch { /* ignore fetch errors */ }
-    }
+        if (!res.ok) { if (!cancelled) { setUser(null); setReady(true); } return; }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const u = session?.user ?? null;
-      if (u && allowed && u.email !== allowed) {
-        supabase.auth.signOut();
-        setUser(null);
-        setReady(true);
-      } else if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        setUser(u);
-        if (u) await fetchDiagrams(); // wait for diagrams before showing UI
-        setReady(true);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-        setDiagrams([]);
-        setReady(true);
+        const data = await res.json();
+        const session = await getSession().catch(() => null);
+        if (cancelled) return;
+
+        if (Array.isArray(data)) setDiagrams(data);
+        setUser({
+          email: session?.user?.email ?? "owner",
+          user_metadata: {
+            full_name: session?.user?.name ?? undefined,
+            avatar_url: session?.user?.image ?? undefined,
+          },
+        });
+      } catch {
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setReady(true);
       }
-    });
+    })();
 
-    return () => subscription.unsubscribe();
+    return () => { cancelled = true; };
   }, []);
 
-  // Show loading until session is checked AND diagrams are fetched
+  // Show loading until auth is checked AND diagrams are fetched
   if (!ready) {
     return (
       <div style={{ position: "fixed", inset: 0, background: "#f4f5f7", display: "flex", alignItems: "center", justifyContent: "center" }}>

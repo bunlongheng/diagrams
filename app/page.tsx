@@ -2,7 +2,6 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Code2, SlidersHorizontal, X, ArrowLeft } from "lucide-react";
 import { CuteToast, showToast } from "./CuteToast";
-import { createClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
 const Editor = dynamic(() => import("react-simple-code-editor"), { ssr: false });
 import Prism from "prismjs";
@@ -813,8 +812,6 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
     useEffect(() => {
         setMounted(true);
         setIsMobile(window.innerWidth < 768);
-        // Listen for auth state — works with implicit OAuth flow
-        const supabase = createClient();
         // Load opts/layout from localStorage
         const rawSearch = window.location.search;
         const params = new URLSearchParams(rawSearch);
@@ -874,31 +871,25 @@ function DiagramEditor({ goBack }: { goBack: () => void }) {
             }).catch(() => setDiagramLoading(false));
         }
 
-        // Auth check — authenticated = full editor, unauthenticated = presenter mode always
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-                setSupabaseUser(data.session.user);
+        // Owner check — authorized (owner session or local/LAN bypass) = full
+        // editor; otherwise presenter mode. Reflects the server gate.
+        fetch("/api/auth/me").then(r => r.json()).then(({ authorized }) => {
+            if (authorized) {
+                setSupabaseUser({ id: "owner" });
                 if (pendingTitleToastRef.current) {
                     const t = pendingTitleToastRef.current;
                     pendingTitleToastRef.current = null;
                     setTimeout(() => showToast(t, { color: "#7c3aed" }), 400);
                 }
             } else {
-                // Not authenticated — always presenter mode
+                // Not the owner — presenter mode
                 setViewMode(true);
             }
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSupabaseUser(session?.user ?? null);
-        });
+        }).catch(() => setViewMode(true));
         // Fetch LAN IP for QR code when on localhost
         if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
             fetch("/api/lan-ip").then(r => r.json()).then(d => { if (d.ip) setLanIp(d.ip); }).catch(() => {});
         }
-        return () => {
-            subscription.unsubscribe();
-        };
     }, []);
 
     // ── Mobile detection on resize ────────────────────────────────────────
@@ -1831,8 +1822,7 @@ No explanation, no markdown, just the JSON object.`,
                                     window.open(url, "_blank");
                                     showToast("Link copied — opening preview", { color: "#7c3aed" });
                                 } else {
-                                    const { data: { session } } = await createClient().auth.getSession();
-                                    await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ is_public: true }) });
+                                    await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_public: true }) });
                                     setIsSharedDiagram(true);
                                     const url = `${PROD_URL}/d/${savedDiagramId}`;
                                     navigator.clipboard.writeText(url).catch(() => {});
@@ -1854,8 +1844,7 @@ No explanation, no markdown, just the JSON object.`,
                             </button>
                             {isSharedDiagram && (
                                 <button onClick={async () => {
-                                    const { data: { session } } = await createClient().auth.getSession();
-                                    await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ is_public: false }) });
+                                    await fetch(`/api/diagrams/${savedDiagramId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ is_public: false }) });
                                     setIsSharedDiagram(false);
                                     showToast("No longer public", { color: "#64748b" });
                                 }} style={{

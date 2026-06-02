@@ -1,59 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { isLocal } from "@/lib/is-local";
 import db from "@/lib/db";
+import { authorizeOwner, resolveOwnerId } from "@/lib/auth-owner";
 
-// GET /api/diagrams/[id] — public only if is_public=true, else requires auth
+// GET /api/diagrams/[id] — public only if is_public=true, else owner-only
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { rows } = await db.query("SELECT * FROM diagrams WHERE id = $1", [id]);
   const data = rows[0];
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // If not public, require auth (bypass on localhost)
-  if (!data.is_public && !isLocal(req)) {
-    const bearer = req.headers.get("authorization")?.replace("Bearer ", "").trim();
-    let authed = false;
-    if (bearer) {
-      try {
-        const payload = JSON.parse(Buffer.from(bearer.split(".")[1], "base64url").toString());
-        if (payload.sub && payload.exp > Date.now() / 1000) authed = true;
-      } catch { /* ignore */ }
-    }
-    if (!authed) {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  // Private diagrams require owner authorization (local bypass / Bearer / session).
+  if (!data.is_public && !(await authorizeOwner(req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   return NextResponse.json(data);
 }
 
-async function resolveUserId(req: NextRequest): Promise<string | null> {
-  const bearer = req.headers.get("authorization")?.replace("Bearer ", "").trim();
-  if (bearer) {
-    try {
-      const payload = JSON.parse(Buffer.from(bearer.split(".")[1], "base64url").toString());
-      if (payload.sub && payload.exp > Date.now() / 1000) return payload.sub;
-    } catch { /* ignore */ }
-  }
-  // Fallback: cookie-based session
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
-
-// PATCH /api/diagrams/[id] — update diagram fields (requires auth + ownership)
+// PATCH /api/diagrams/[id] — update diagram fields (owner only)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const userId = await resolveUserId(req);
+  const userId = await resolveOwnerId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
 
+  // Automation/API integrations may never touch tags — those stay owner-managed.
+  const isApiCall = !!req.headers.get("authorization")?.trim();
+
   // Build dynamic SET clause from allowed fields
-  const allowed = ["title", "code", "tags", "settings", "is_public"];
+  const allowed = isApiCall
+    ? ["title", "code", "settings", "is_public"]
+    : ["title", "code", "tags", "settings", "is_public"];
   const setClauses: string[] = [];
   const values: unknown[] = [];
   let paramIdx = 1;
@@ -83,9 +61,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/diagrams/[id] — delete diagram (requires auth + ownership)
+// DELETE /api/diagrams/[id] — delete diagram (owner only)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const userId = await resolveUserId(req);
+  const userId = await resolveOwnerId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
