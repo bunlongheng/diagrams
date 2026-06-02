@@ -1,15 +1,17 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { CuteToast, showToast } from "@/app/CuteToast";
 import type { User } from "@supabase/supabase-js";
 import confetti from "canvas-confetti";
-import { Bot, Plug, Briefcase, User as UserIcon, FlaskConical, Clipboard, GraduationCap, Lightbulb, Rocket, Star, Heart, Tag } from "lucide-react";
+import { Bot, Plug, Briefcase, User as UserIcon, FlaskConical, Clipboard, GraduationCap, Lightbulb, Rocket, Star, Heart, Tag, Youtube } from "lucide-react";
 
 type Diagram = {
   id: string; title: string; slug: string;
   diagram_type: string; created_at: string; updated_at: string; code: string;
   tags: string[];
+  youtube_id?: string | null;
 };
 
 // ── Shared (public) ───────────────────────────────────────────────────────────
@@ -329,6 +331,27 @@ function DiagramMinimap({ code, type }: { code: string; type: string }) {
   );
 }
 
+// ── YouTube thumbnail ───────────────────────────────────────────────────────────
+// Shown instead of the diagram minimap for YouTube automations (tag "YouTube").
+function YouTubeThumb({ id, title }: { id: string; title: string }) {
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: "2 / 1", borderRadius: 8, overflow: "hidden", background: "#000" }}>
+      <Image
+        src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`}
+        alt={title}
+        fill
+        sizes="224px"
+        style={{ objectFit: "cover" }}
+      />
+      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ width: 34, height: 24, borderRadius: 6, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="#fff"><polygon points="8 5 19 12 8 19 8 5" /></svg>
+        </span>
+      </span>
+    </div>
+  );
+}
+
 // ── AI Thinking animation ─────────────────────────────────────────────────────
 const AI_TOKENS = [
   "tokens","context","embedding","inference","neural","attention","transformer",
@@ -544,7 +567,11 @@ const TAG_PALETTE = [
 const TAG_ICONS: Record<string, React.ComponentType<any>> = {
   AI: Bot, API: Plug, Work: Briefcase, Personal: UserIcon,
   Research: FlaskConical, Pasted: Clipboard, Learning: GraduationCap,
-  Idea: Lightbulb, Project: Rocket, Favorite: Star, Love: Heart,
+  Idea: Lightbulb, Project: Rocket, Favorite: Star, Love: Heart, YouTube: Youtube,
+};
+// Tags pinned to a fixed color regardless of sort order (brand identity).
+const TAG_FIXED_COLORS: Record<string, typeof TAG_PALETTE[0]> = {
+  YouTube: { bg: "#fef2f2", text: "#cc0000", border: "#fca5a5" },
 };
 function TagIcon({ tag, size = 10 }: { tag: string; size?: number }) {
   const Icon = TAG_ICONS[tag] ?? Tag;
@@ -553,7 +580,7 @@ function TagIcon({ tag, size = 10 }: { tag: string; size?: number }) {
 
 function buildTagColorMap(tags: string[]): Map<string, typeof TAG_PALETTE[0]> {
   const map = new Map<string, typeof TAG_PALETTE[0]>();
-  [...tags].sort().forEach((t, i) => map.set(t, TAG_PALETTE[i % TAG_PALETTE.length]));
+  [...tags].sort().forEach((t, i) => map.set(t, TAG_FIXED_COLORS[t] ?? TAG_PALETTE[i % TAG_PALETTE.length]));
   return map;
 }
 const FALLBACK_TAG_STYLE = { bg: "#f0f1f3", text: "#65676b", border: "#e4e6e8" };
@@ -715,9 +742,11 @@ function DiagramCard({ d, isShared, onOpen, onDelete, onShare, onRename, onTag, 
         </div>
       )}
 
-      {/* Minimap */}
+      {/* Preview — YouTube thumbnail for YouTube automations, else diagram minimap */}
       <div style={{ padding: "0 12px 13px" }}>
-        <DiagramMinimap code={d.code} type={d.diagram_type} />
+        {d.youtube_id
+          ? <YouTubeThumb id={d.youtube_id} title={d.title} />
+          : <DiagramMinimap code={d.code} type={d.diagram_type} />}
       </div>
 
       {/* Hover actions */}

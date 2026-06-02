@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { rows } = await db.query(
-    "SELECT id, title, slug, diagram_type, created_at, updated_at, code, tags FROM diagrams WHERE user_id = $1 ORDER BY updated_at DESC",
+    "SELECT id, title, slug, diagram_type, created_at, updated_at, code, tags, settings->>'youtubeId' AS youtube_id FROM diagrams WHERE user_id = $1 ORDER BY updated_at DESC",
     [user.id]
   );
   return NextResponse.json(rows);
