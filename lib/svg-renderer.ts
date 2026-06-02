@@ -292,9 +292,12 @@ function buildSvg(d: Diagram, o: Opts, l: Layout, createdAt?: string | Date): st
         notesSectionH = maxColH + NOTE_SEC_PAD * 2;
     }
     const stepGap = MG + VP;
-    const H = TOP_PAD + TITLE_H + TP + BH + VP + Math.max(0, totalSteps - 1) * stepGap + VP + BH + notesSectionH + BOT_PAD;
+    // Default breathing room between the header/footer boxes and the first/last
+    // step, applied only at the top and bottom edges (not between every step).
+    const EDGE_PAD = 24;
+    const H = TOP_PAD + TITLE_H + TP + BH + EDGE_PAD + VP + Math.max(0, totalSteps - 1) * stepGap + VP + EDGE_PAD + BH + notesSectionH + BOT_PAD;
     const lt = TOP_PAD + TITLE_H + TP + BH, lb = H - BOT_PAD - notesSectionH - BH;
-    const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + VP + (s - 1) * stepGap;
+    const msgY = (s: number) => TOP_PAD + TITLE_H + TP + BH + EDGE_PAD + VP + (s - 1) * stepGap;
     const f = `'${o.font}', sans-serif`;
     const ld = LIFELINE_DASH.solid;
     const lifelineSW = ld.sw ?? 1.5;
