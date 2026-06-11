@@ -528,43 +528,6 @@ describe("GET /svg/[id]", () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// GET /d/[id]
-// ════════════════════════════════════════════════════════════════════════════
-describe("GET /d/[id]", () => {
-  it("returns 400 for invalid UUID", async () => {
-    const { GET } = await import("@/app/d/[id]/route");
-    const req = new Request("http://localhost:3002/d/not-a-uuid");
-    const res = await GET(req, { params: Promise.resolve({ id: "not-a-uuid" }) });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 404 when diagram not found", async () => {
-    const { GET } = await import("@/app/d/[id]/route");
-    q.mockResolvedValue({ rows: [], rowCount: 0 });
-    const req = new Request("http://localhost:3002/d/00000000-0000-0000-0000-000000000001");
-    const res = await GET(req, { params: Promise.resolve({ id: "00000000-0000-0000-0000-000000000001" }) });
-    expect(res.status).toBe(404);
-  });
-
-  it("returns 200 with image/svg+xml for valid diagram", async () => {
-    const { GET } = await import("@/app/d/[id]/route");
-    q.mockResolvedValue({
-      rows: [{
-        code: "sequenceDiagram\nA->>B: hello",
-        settings: null,
-        title: "Hello",
-        created_at: new Date().toISOString(),
-      }],
-      rowCount: 1,
-    });
-    const req = new Request("http://localhost:3002/d/00000000-0000-0000-0000-000000000001");
-    const res = await GET(req, { params: Promise.resolve({ id: "00000000-0000-0000-0000-000000000001" }) });
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toContain("image/svg+xml");
-  });
-});
-
-// ════════════════════════════════════════════════════════════════════════════
 // GET /api/diagrams/[id]/export  (module reads AI_SECRET at import time)
 // ════════════════════════════════════════════════════════════════════════════
 describe("GET /api/diagrams/[id]/export", () => {

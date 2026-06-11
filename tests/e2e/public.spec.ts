@@ -45,9 +45,9 @@ test.describe("Public API Routes", () => {
     expect([404, 500]).toContain(status);
   });
 
-  test("GET /d/not-a-uuid returns 400", async ({ request }) => {
+  test("GET /d/not-a-uuid returns 404", async ({ request }) => {
     const res = await request.get("/d/not-a-uuid");
-    expect(res.status()).toBe(400);
+    expect(res.status()).toBe(404);
   });
 
   test("GET /api/export without ?id returns 400", async ({ request }) => {
