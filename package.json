@@ -16,6 +16,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@auth/pg-adapter": "^1.11.2",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/prismjs": "^1.26.6",
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.574.0",

@@ -1,10 +1,15 @@
 import { ImageResponse } from "next/og";
-import sharp from "sharp";
+import { Resvg } from "@resvg/resvg-js";
+import { join } from "node:path";
 import db from "@/lib/db";
 import { parse, buildSvg, DEFAULT_OPTS, DEFAULT_LAYOUT } from "@/lib/svg-renderer";
 import type { Opts, Layout } from "@/lib/svg-renderer";
 
 export const runtime = "nodejs";
+
+// Roboto matches the diagram font; bundled (see outputFileTracingIncludes) so
+// resvg renders text on serverless, where no system fonts exist.
+const FONT_FILES = ["Roboto-Regular.ttf", "Roboto-Bold.ttf"].map((f) => join(process.cwd(), "lib/fonts", f));
 export const dynamic = "force-dynamic";
 export const alt = "Diagram preview";
 export const size = { width: 1200, height: 630 };
@@ -61,12 +66,13 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const boxW = 1072, boxH = 408;
   const scale = Math.min(boxW / W, boxH / H, 1.6);
   const dw = Math.round(W * scale), dh = Math.round(H * scale);
-  // sharp rasterizes the SVG (text labels included) to PNG; fall back to the raw
-  // SVG data URI if sharp fails so the card still renders the diagram shapes.
+  // resvg rasterizes the SVG to PNG with the bundled Roboto font so text labels
+  // render on serverless; fall back to the raw SVG (shapes only) if resvg fails.
   let dataUri: string;
   try {
-    const png = await sharp(Buffer.from(svg)).resize({ width: dw, height: dh, fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toBuffer();
-    dataUri = `data:image/png;base64,${png.toString("base64")}`;
+    const resvg = new Resvg(svg, { fitTo: { mode: "width", value: dw }, font: { fontFiles: FONT_FILES, defaultFontFamily: "Roboto", loadSystemFonts: false } });
+    const png = resvg.render().asPng();
+    dataUri = `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
   } catch {
     dataUri = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
   }
